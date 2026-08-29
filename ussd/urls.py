@@ -1,6 +1,6 @@
 from django.urls import path
 from django.views.generic import RedirectView
-from .views import ussd_callback, sms_delivery_callback
+from .views import ussd_callback, sms_delivery_callback, sms_incoming_callback
 from . import dashboard_views
 
 urlpatterns = [
@@ -12,6 +12,9 @@ urlpatterns = [
 
     # SMS delivery status callback (from Africa's Talking)
     path('sms/delivery/', sms_delivery_callback, name='sms_delivery_callback'),
+
+    # Incoming SMS callback (from Africa's Talking)
+    path('sms/incoming/', sms_incoming_callback, name='sms_incoming_callback'),
 
     # Supervisor Dashboard
     path('dashboard/login/', dashboard_views.dashboard_login, name='dashboard_login'),

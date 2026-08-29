@@ -5,12 +5,14 @@ from django.conf import settings
 class FaultReport(models.Model):
     STATUS_OPEN = 'OPEN'
     STATUS_ASSIGNED = 'ASSIGNED'
+    STATUS_ACCEPTED = 'ACCEPTED'
     STATUS_IN_PROGRESS = 'IN_PROGRESS'
     STATUS_RESOLVED = 'RESOLVED'
 
     STATUS_CHOICES = [
         (STATUS_OPEN, 'Open'),
         (STATUS_ASSIGNED, 'Assigned'),
+        (STATUS_ACCEPTED, 'Accepted'),
         (STATUS_IN_PROGRESS, 'In Progress'),
         (STATUS_RESOLVED, 'Resolved'),
     ]

@@ -174,6 +174,32 @@
                         <button type="submit" class="btn btn-secondary">Revert to Open</button>
                     </form>
 
+                {% elif fault.status == 'ACCEPTED' %}
+                    <div style="background-color: #e0e7ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 0.85rem; margin-bottom: 1.25rem;">
+                        <span style="font-size: 0.8rem; font-weight: 600; color: #3730a3; text-transform: uppercase;">Task Accepted By:</span>
+                        <div style="font-size: 1rem; font-weight: 600; color: #312e81; margin-top: 0.25rem;">
+                            👤 {{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}
+                        </div>
+                    </div>
+
+                    <form method="post" class="action-form" style="margin-bottom: 1.25rem;">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="IN_PROGRESS">
+                        <p class="action-description">
+                            Technician has accepted the task via SMS. Click to mark as "In Progress".
+                        </p>
+                        <button type="submit" class="btn btn-primary">Start Work</button>
+                    </form>
+
+                    <form method="post" class="action-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="OPEN">
+                        <p class="action-description">
+                            Revert the status back to Open.
+                        </p>
+                        <button type="submit" class="btn btn-secondary">Revert to Open</button>
+                    </form>
+
                 {% elif fault.status == 'IN_PROGRESS' %}
                     <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 0.85rem; margin-bottom: 1.25rem;">
                         <span style="font-size: 0.8rem; font-weight: 600; color: #92400e; text-transform: uppercase;">In Progress with:</span>

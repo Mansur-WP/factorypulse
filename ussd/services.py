@@ -220,9 +220,12 @@ def update_fault_status(fault_id: int, new_status: str) -> FaultReport:
 
     valid = False
     if old_status == FaultReport.STATUS_OPEN:
-        if new_status == FaultReport.STATUS_ASSIGNED:
+        if new_status in (FaultReport.STATUS_ASSIGNED, FaultReport.STATUS_ACCEPTED):
             valid = True
     elif old_status == FaultReport.STATUS_ASSIGNED:
+        if new_status in (FaultReport.STATUS_ACCEPTED, FaultReport.STATUS_IN_PROGRESS, FaultReport.STATUS_OPEN):
+            valid = True
+    elif old_status == FaultReport.STATUS_ACCEPTED:
         if new_status in (FaultReport.STATUS_IN_PROGRESS, FaultReport.STATUS_OPEN):
             valid = True
     elif old_status == FaultReport.STATUS_IN_PROGRESS:
@@ -240,6 +243,149 @@ def update_fault_status(fault_id: int, new_status: str) -> FaultReport:
     fault.status = new_status
     fault.save()
     return fault
+
+
+def _find_technician_by_phone(phone: str) -> Union[Technician, None]:
+    """
+    Looks up a Technician by phone number with flexible matching.
+    """
+    if not phone:
+        return None
+    clean = phone.strip()
+    tech = Technician.objects.filter(phone_number=clean).first()
+    if tech:
+        return tech
+
+    # Try matching without leading '+'
+    no_plus = clean.lstrip('+')
+    tech = Technician.objects.filter(phone_number__icontains=no_plus).first()
+    if tech:
+        return tech
+
+    # Match by last 10 digits
+    digits = ''.join(c for c in clean if c.isdigit())
+    if len(digits) >= 10:
+        last_10 = digits[-10:]
+        for t in Technician.objects.exclude(phone_number=''):
+            t_digits = ''.join(c for c in t.phone_number if c.isdigit())
+            if t_digits.endswith(last_10):
+                return t
+
+    return None
+
+
+def process_incoming_technician_sms(sender_phone: str, text: str) -> dict:
+    """
+    Processes an incoming SMS command from a technician.
+    Supported commands:
+      - ACCEPT <fault_id>
+      - START <fault_id>
+      - RESOLVE <fault_id>
+
+    Returns a dict with 'status', 'response_message', and optional 'fault'.
+    Sends a confirmation/reply SMS to the sender.
+    """
+    from .sms_service import send_sms
+
+    clean_phone = (sender_phone or '').strip()
+    clean_text = (text or '').strip()
+
+    # 1. Look up technician
+    technician = _find_technician_by_phone(clean_phone)
+    if not technician:
+        reply_msg = "FactoryPulse: Your phone number is not registered as a technician."
+        send_sms(clean_phone, reply_msg)
+        return {
+            'status': 'error',
+            'reason': 'technician_not_found',
+            'response_message': reply_msg
+        }
+
+    # 2. Parse command
+    parts = clean_text.split()
+    cmd = parts[0].upper() if parts else ''
+
+    if len(parts) < 2 or cmd not in ('ACCEPT', 'START', 'RESOLVE'):
+        reply_msg = "FactoryPulse: Invalid command. Use ACCEPT <fault ID>, START <fault ID>, or RESOLVE <fault ID>."
+        send_sms(clean_phone, reply_msg)
+        return {
+            'status': 'error',
+            'reason': 'invalid_command',
+            'response_message': reply_msg
+        }
+
+    try:
+        fault_id = int(parts[1])
+    except ValueError:
+        reply_msg = "FactoryPulse: Invalid command. Use ACCEPT <fault ID>, START <fault ID>, or RESOLVE <fault ID>."
+        send_sms(clean_phone, reply_msg)
+        return {
+            'status': 'error',
+            'reason': 'invalid_fault_id',
+            'response_message': reply_msg
+        }
+
+    # 3. Look up fault
+    try:
+        fault = FaultReport.objects.get(pk=fault_id)
+    except FaultReport.DoesNotExist:
+        reply_msg = f"FactoryPulse: Fault #{fault_id} not found."
+        send_sms(clean_phone, reply_msg)
+        return {
+            'status': 'error',
+            'reason': 'fault_not_found',
+            'response_message': reply_msg
+        }
+
+    # 4. Validate ownership
+    if fault.assigned_to != technician.user:
+        reply_msg = f"FactoryPulse: Fault #{fault_id} is not assigned to you."
+        send_sms(clean_phone, reply_msg)
+        return {
+            'status': 'error',
+            'reason': 'unauthorized_fault',
+            'response_message': reply_msg
+        }
+
+    # 5. Process command & enforce state transition rules
+    try:
+        if cmd == 'ACCEPT':
+            if fault.status != FaultReport.STATUS_ASSIGNED:
+                raise ValidationError(f"Fault #{fault_id} cannot be accepted from '{fault.get_status_display()}' status.")
+            update_fault_status(fault.id, FaultReport.STATUS_ACCEPTED)
+            reply_msg = f"FactoryPulse: Fault #{fault_id} accepted. You can start work using START {fault_id}."
+
+        elif cmd == 'START':
+            if fault.status not in (FaultReport.STATUS_ACCEPTED, FaultReport.STATUS_ASSIGNED):
+                raise ValidationError(f"Fault #{fault_id} cannot be started from '{fault.get_status_display()}' status.")
+            update_fault_status(fault.id, FaultReport.STATUS_IN_PROGRESS)
+            reply_msg = f"FactoryPulse: Fault #{fault_id} is now IN PROGRESS."
+
+        elif cmd == 'RESOLVE':
+            if fault.status != FaultReport.STATUS_IN_PROGRESS:
+                raise ValidationError(f"Fault #{fault_id} cannot be resolved from '{fault.get_status_display()}' status.")
+            update_fault_status(fault.id, FaultReport.STATUS_RESOLVED)
+            reply_msg = f"FactoryPulse: Fault #{fault_id} has been marked RESOLVED."
+
+    except ValidationError as e:
+        reply_msg = f"FactoryPulse: {e.message if hasattr(e, 'message') else str(e)}"
+        send_sms(clean_phone, reply_msg)
+        return {
+            'status': 'error',
+            'reason': 'invalid_transition',
+            'response_message': reply_msg,
+            'fault': fault
+        }
+
+    # Send success reply
+    send_sms(clean_phone, reply_msg)
+    return {
+        'status': 'success',
+        'command': cmd,
+        'fault_id': fault_id,
+        'response_message': reply_msg,
+        'fault': fault
+    }
 
 
 def get_dashboard_stats() -> dict:

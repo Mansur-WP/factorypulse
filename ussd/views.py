@@ -177,3 +177,31 @@ def sms_delivery_callback(request):
 
     return HttpResponse("OK", status=200, content_type='text/plain')
 
+
+@csrf_exempt
+@require_POST
+def sms_incoming_callback(request):
+    """
+    Africa's Talking Incoming SMS webhook endpoint.
+    POST /sms/incoming/
+
+    Africa's Talking POSTs:
+      - from  : Sender phone number (e.g. "+2349012345678")
+      - to    : Shortcode / receiver number
+      - text  : SMS message body (e.g. "ACCEPT 9", "START 9", "RESOLVE 9")
+      - date  : Timestamp
+      - id    : Unique message ID
+    """
+    from_phone = request.POST.get('from', '').strip()
+    text = request.POST.get('text', '').strip()
+    msg_id = request.POST.get('id', '')
+
+    logger.info(f"Incoming SMS received: id={msg_id}, from={from_phone}, text='{text}'")
+
+    from .services import process_incoming_technician_sms
+    result = process_incoming_technician_sms(sender_phone=from_phone, text=text)
+
+    logger.info(f"Incoming SMS processing result: {result.get('status')} - {result.get('reason', 'ok')}")
+    return HttpResponse("OK", status=200, content_type='text/plain')
+
+

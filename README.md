@@ -48,11 +48,15 @@ Supervisor (Dashboard) ────┘              ↓
 - **Machine Management (`/dashboard/machines/`)**: View, add, and edit machines with operational statuses (`OPERATIONAL`, `MAINTENANCE`, `OFFLINE`) and fault histories.
 - **Activity Feed**: Real-time log of recent reports and resolutions.
 
-### 4. 👷 Technician Assignment & SMS Notifications
+### 4. 👷 Technician Assignment & Two-Way SMS Workflow
 - **Technician Model**: Registered technicians linked to Django users with phone numbers.
-- **Assignment Workflow**: Supervisors assign faults to technicians via the dashboard.
-- **SMS Notifications**: When a fault is assigned, an SMS is automatically sent to the technician's phone via Africa's Talking.
-- **Fault-Safe SMS**: SMS failures never roll back the database assignment.
+- **Assignment Workflow**: Supervisors assign faults to technicians via the dashboard (`OPEN` → `ASSIGNED`).
+- **Outgoing SMS Notifications**: Automatic SMS sent to technician upon assignment.
+- **Incoming SMS Responses** (`POST /sms/incoming/`): Technicians reply via SMS to progress assigned tasks:
+  - `ACCEPT <id>`: `ASSIGNED` → `ACCEPTED`
+  - `START <id>`: `ACCEPTED` → `IN_PROGRESS`
+  - `RESOLVE <id>`: `IN_PROGRESS` → `RESOLVED`
+- **SMS Security & Validation**: Phone matching prevents unauthorized modifications; invalid commands receive instructional replies.
 - **SMS Delivery Callback** (`POST /sms/delivery/`): Webhook endpoint for Africa's Talking delivery status reports.
 
 ---

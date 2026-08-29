@@ -265,3 +265,233 @@ class SMSDeliveryCallbackTests(TestCase):
         """GET /sms/delivery/ should be rejected (405 Method Not Allowed)."""
         response = self.client.get('/sms/delivery/')
         self.assertEqual(response.status_code, 405)
+
+
+class IncomingSMSResponseTests(TestCase):
+    """
+    Tests for the Technician SMS Response Workflow (POST /sms/incoming/).
+    Covers ACCEPT, START, RESOLVE commands, phone matching, state rules, security & error responses.
+    """
+
+    def setUp(self):
+        Technician.objects.all().delete()
+        Machine.objects.all().delete()
+        self.client = Client()
+
+        # Users & Technicians
+        self.user_tech_1 = User.objects.create_user(username='tech1_sms', password='pass')
+        self.tech_1 = Technician.objects.create(
+            user=self.user_tech_1,
+            name='Musa Tech',
+            phone_number='+2348011112222'
+        )
+
+        self.user_tech_2 = User.objects.create_user(username='tech2_sms', password='pass')
+        self.tech_2 = Technician.objects.create(
+            user=self.user_tech_2,
+            name='Abdullahi Tech',
+            phone_number='+2348033334444'
+        )
+
+        self.machine = Machine.objects.create(name='Generator')
+
+        # Assigned fault to tech_1
+        self.fault_assigned = FaultReport.objects.create(
+            machine=str(self.machine),
+            problem='Overheating',
+            severity='High',
+            status=FaultReport.STATUS_ASSIGNED,
+            assigned_to=self.user_tech_1,
+        )
+
+    @patch('ussd.sms_service.send_sms')
+    def test_technician_sends_accept(self, mock_send_sms):
+        """Technician sending ACCEPT <id> updates status to ACCEPTED and sends confirmation."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        response = self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'to': '20880',
+            'text': f'ACCEPT {self.fault_assigned.id}',
+            'date': '2026-08-29 14:00:00',
+            'id': 'ATX1001',
+        })
+        self.assertEqual(response.status_code, 200)
+
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_ACCEPTED)
+
+        # Check confirmation SMS sent to technician
+        mock_send_sms.assert_called_once()
+        recipient, message = mock_send_sms.call_args[0]
+        self.assertEqual(recipient, '+2348011112222')
+        self.assertIn(f'Fault #{self.fault_assigned.id} accepted', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_technician_sends_start(self, mock_send_sms):
+        """Technician sending START <id> updates status from ACCEPTED to IN_PROGRESS."""
+        mock_send_sms.return_value = {'status': 'sent'}
+        self.fault_assigned.status = FaultReport.STATUS_ACCEPTED
+        self.fault_assigned.save()
+
+        response = self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'to': '20880',
+            'text': f'START {self.fault_assigned.id}',
+            'date': '2026-08-29 14:05:00',
+            'id': 'ATX1002',
+        })
+        self.assertEqual(response.status_code, 200)
+
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_IN_PROGRESS)
+
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('IN PROGRESS', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_technician_sends_resolve(self, mock_send_sms):
+        """Technician sending RESOLVE <id> updates status from IN_PROGRESS to RESOLVED."""
+        mock_send_sms.return_value = {'status': 'sent'}
+        self.fault_assigned.status = FaultReport.STATUS_IN_PROGRESS
+        self.fault_assigned.save()
+
+        response = self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'to': '20880',
+            'text': f'RESOLVE {self.fault_assigned.id}',
+            'date': '2026-08-29 14:10:00',
+            'id': 'ATX1003',
+        })
+        self.assertEqual(response.status_code, 200)
+
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_RESOLVED)
+
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('RESOLVED', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_lowercase_and_spaced_commands(self, mock_send_sms):
+        """Commands are case-insensitive and handle extra spaces."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        response = self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': f'   accept    {self.fault_assigned.id}   ',
+        })
+        self.assertEqual(response.status_code, 200)
+
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_ACCEPTED)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_invalid_command_returns_helpful_response(self, mock_send_sms):
+        """Invalid command text triggers an instructional reply."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        response = self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': 'FIX 9',
+        })
+        self.assertEqual(response.status_code, 200)
+
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('Invalid command', message)
+        self.assertIn('ACCEPT <fault ID>', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_missing_or_non_numeric_fault_id(self, mock_send_sms):
+        """Missing or non-numeric fault ID triggers an invalid command reply."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': 'ACCEPT abc',
+        })
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('Invalid command', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_nonexistent_fault(self, mock_send_sms):
+        """Nonexistent fault ID returns fault not found message."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': 'ACCEPT 999999',
+        })
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('Fault #999999 not found', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_unregistered_phone_number(self, mock_send_sms):
+        """Sender not matching any Technician gets a safe error reply and no fault change."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        self.client.post('/sms/incoming/', {
+            'from': '+2349999999999',
+            'text': f'ACCEPT {self.fault_assigned.id}',
+        })
+
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_ASSIGNED)
+
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('not registered as a technician', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_technician_cannot_modify_other_technicians_fault(self, mock_send_sms):
+        """Technician 2 cannot modify a fault assigned to Technician 1."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        response = self.client.post('/sms/incoming/', {
+            'from': '+2348033334444',  # tech_2's phone
+            'text': f'ACCEPT {self.fault_assigned.id}',  # assigned to tech_1
+        })
+        self.assertEqual(response.status_code, 200)
+
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_ASSIGNED)
+
+        message = mock_send_sms.call_args[0][1]
+        self.assertIn('is not assigned to you', message)
+
+    @patch('ussd.sms_service.send_sms')
+    def test_invalid_status_transitions(self, mock_send_sms):
+        """Rejects invalid transitions such as OPEN -> START, ASSIGNED -> RESOLVE, RESOLVED -> START."""
+        mock_send_sms.return_value = {'status': 'sent'}
+
+        # 1. OPEN fault -> START
+        fault_open = FaultReport.objects.create(
+            machine='Generator',
+            problem='Leaking oil',
+            severity='Medium',
+            status=FaultReport.STATUS_OPEN,
+            assigned_to=self.user_tech_1,
+        )
+        self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': f'START {fault_open.id}',
+        })
+        fault_open.refresh_from_db()
+        self.assertEqual(fault_open.status, FaultReport.STATUS_OPEN)
+
+        # 2. ASSIGNED fault -> RESOLVE
+        self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': f'RESOLVE {self.fault_assigned.id}',
+        })
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_ASSIGNED)
+
+        # 3. RESOLVED fault -> START
+        self.fault_assigned.status = FaultReport.STATUS_RESOLVED
+        self.fault_assigned.save()
+        self.client.post('/sms/incoming/', {
+            'from': '+2348011112222',
+            'text': f'START {self.fault_assigned.id}',
+        })
+        self.fault_assigned.refresh_from_db()
+        self.assertEqual(self.fault_assigned.status, FaultReport.STATUS_RESOLVED)
+

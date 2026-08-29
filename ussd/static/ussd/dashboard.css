@@ -277,6 +277,7 @@ body {
 
 .badge.open { background-color: var(--badge-high-bg); color: var(--badge-high-text); }
 .badge.assigned { background-color: var(--badge-medium-bg); color: var(--badge-medium-text); }
+.badge.accepted { background-color: #e0e7ff; color: #3730a3; }
 .badge.in_progress { background-color: #fffbeb; color: #b45309; }
 .badge.resolved { background-color: var(--badge-resolved-bg); color: var(--badge-resolved-text); }
 
