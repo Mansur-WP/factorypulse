@@ -1,91 +1,55 @@
-
 # 🏭 FactoryPulse
 
 ## Manufacturing Fault Reporting & Maintenance Coordination
 
-FactoryPulse is a simple manufacturing maintenance system that allows factory workers to report machine faults and helps supervisors manage those reports.
-
-The project is designed to use **USSD and SMS**, making it possible to report faults without requiring a smartphone or internet connection.
-
-For development and testing, Telegram is currently being used as a temporary interface.
+FactoryPulse is a lightweight manufacturing maintenance and fault-reporting platform designed for African factories. It enables shop-floor workers to report machine breakdowns and operational faults instantly without needing a smartphone or internet connection, while giving factory supervisors a centralized dashboard to track and resolve issues.
 
 ---
 
-## 🚀 How It Works
+## 🚀 System Architecture
+
+FactoryPulse uses a single, shared business logic layer across all interfaces:
 
 ```text
-Factory Worker
-      ↓
-USSD / Telegram
-      ↓
-FactoryPulse
-      ↓
-Django
-      ↓
-Database
-      ↓
-Supervisor
-      ↓
-Maintenance Action
-````
-
-A typical fault report:
-
-```text
-Report Fault
-     ↓
-Select Machine
-     ↓
-Select Problem
-     ↓
-Select Severity
-     ↓
-Confirm
-     ↓
-Fault Saved
+Shop-Floor Worker (USSD) ──┐
+                           │
+Developer / Tester (TG) ───┼──→ FactoryPulse Services (ussd/services.py) ──→ SQLite Database
+                           │
+Supervisor (Dashboard) ────┘
 ```
+
+---
+
+## 📱 Features
+
+### 1. 📞 Africa's Talking USSD Gateway (`POST /ussd/`)
+- Interactive USSD menu (`*384*...#`).
+- Fast, multi-step fault reporting (Machine $\rightarrow$ Problem $\rightarrow$ Severity $\rightarrow$ Confirmation).
+- Session cancellation handling (`0` or `Cancel`).
+- Cumulative session state parser with robust input validation.
+
+### 2. 🤖 Telegram Development Bot (`run_telegram_bot`)
+- Interactive Telegram interface mirroring the complete USSD flow with reply keyboards and numerical inputs.
+- Custom problem descriptions ("Other" option).
+- Machine status checking & isolated personal report history ("My Reports").
+
+### 3. 🖥️ Supervisor Dashboard (`/dashboard/`)
+- **Protected Authentication**: Restricted to authenticated staff/admin accounts.
+- **KPI Summary Cards**: Real-time counters for Total, Open, Critical, and Resolved faults.
+- **Filterable Faults List**: Search by machine, problem, reporter, and filter by status and severity.
+- **Fault Workflow Actions**: Strict state transitions (`OPEN` $\rightarrow$ `ASSIGNED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `RESOLVED`).
+- **Machine Management (`/dashboard/machines/`)**: View, add, and edit machines with operational statuses (`OPERATIONAL`, `MAINTENANCE`, `OFFLINE`) and fault histories.
+- **Activity Feed**: Real-time log of recent reports and resolutions.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* Python
-* Django
-* SQLite
-* Africa's Talking USSD
-* Telegram Bot API
-* python-dotenv
-
----
-
-## 📱 Current Features
-
-* USSD callback endpoint
-* Fault reporting through USSD
-* Telegram development interface
-* Machine selection
-* Problem selection
-* Severity selection
-* Fault confirmation
-* Fault cancellation
-* Fault database storage
-* Input validation
-* Django Admin support
-* Automated tests
-
-### Fault Severity
-
-* Low
-* Medium
-* High
-* Critical
-
-### Fault Status
-
-* OPEN
-* ASSIGNED
-* IN_PROGRESS
-* RESOLVED
+- **Backend**: Python 3.12+, Django 5.2+
+- **Database**: SQLite (Development / Production ready with PostgreSQL)
+- **Interfaces**: Africa's Talking USSD API, Telegram Bot API (`python-telegram-bot`)
+- **Frontend**: Django Templates & Vanilla CSS (Responsive, no heavy frontend frameworks)
+- **Environment**: `python-dotenv`
 
 ---
 
@@ -102,14 +66,30 @@ FactoryPulse/
 │
 ├── ussd/
 │   ├── migrations/
-│   ├── admin.py
-│   ├── models.py
-│   ├── tests.py
-│   ├── urls.py
-│   └── views.py
+│   ├── static/ussd/
+│   │   └── dashboard.css          # Dashboard styling
+│   ├── templates/ussd/
+│   │   ├── dashboard_base.html
+│   │   ├── dashboard_home.html
+│   │   ├── dashboard_faults.html
+│   │   ├── dashboard_fault_detail.html
+│   │   ├── dashboard_machines.html
+│   │   └── dashboard_machine_form.html
+│   ├── management/commands/
+│   │   └── run_telegram_bot.py    # Management command for Telegram bot
+│   ├── admin.py                   # Django Admin registration
+│   ├── apps.py                    # App configuration & machine auto-seeding
+│   ├── models.py                  # FaultReport and Machine models
+│   ├── services.py                # Core shared business logic & state workflows
+│   ├── views.py                   # USSD callback endpoint
+│   ├── dashboard_views.py         # Supervisor Dashboard views
+│   ├── urls.py                    # Dashboard & USSD route definitions
+│   ├── tests.py                   # USSD integration tests
+│   ├── test_services.py           # Business logic unit tests
+│   ├── test_telegram.py           # Telegram bot handler tests
+│   └── test_dashboard.py          # Dashboard auth, filtering & workflow tests
 │
 ├── manage.py
-├── .env
 ├── .env.example
 ├── .gitignore
 ├── requirements.txt
@@ -118,25 +98,27 @@ FactoryPulse/
 
 ---
 
-## ⚙️ Setup
+## ⚙️ Quickstart & Setup Guide
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd FactoryPulse
+git clone https://github.com/Mansur-WP/factorypulse.git
+cd factorypulse
 ```
 
-### 2. Create a virtual environment
+### 2. Create and activate a virtual environment
 
+**Windows:**
 ```bash
 python -m venv venv
+venv\Scripts\activate
 ```
 
-Windows:
-
+**macOS / Linux:**
 ```bash
-venv\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 ### 3. Install dependencies
@@ -147,163 +129,134 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Create a `.env` file:
+Create a `.env` file in the root directory:
 
-```env
-DJANGO_SECRET_KEY=your_secret_key
-AFRICASTALKING_USERNAME=your_username
-AFRICASTALKING_API_KEY=your_api_key
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+```bash
+cp .env.example .env
 ```
 
-Never commit the real `.env` file or API keys.
+Ensure the following variables are present in `.env`:
+
+```env
+# Africa's Talking Credentials
+AFRICASTALKING_USERNAME=sandbox
+AFRICASTALKING_API_KEY=your_africastalking_api_key
+
+# Telegram Bot (Optional for local testing)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_from_botfather
+
+# Django Settings
+DJANGO_SECRET_KEY=your-secret-key-here
+DEBUG=True
+ALLOWED_HOSTS=*
+```
+
+> **Note**: Never commit real `.env` files or API secrets to version control.
 
 ### 5. Run migrations
 
 ```bash
 python manage.py migrate
 ```
+*(This automatically migrates the database and seeds the default factory machines: Generator, Packaging Machine, and Milling Machine).*
 
-### 6. Check the project
+### 6. Create a Supervisor / Staff account
+
+To log into the **Supervisor Dashboard**, you need a staff account:
+
+```bash
+python manage.py createsuperuser
+```
+Follow the prompts to enter your username, email, and password.
+
+### 7. Run the test suite
 
 ```bash
 python manage.py check
-```
-
-### 7. Run tests
-
-```bash
 python manage.py test
 ```
+*All 87 automated tests should pass.*
 
-### 8. Start the server
+---
+
+## 🚀 Running the Services
+
+### 🖥️ 1. Start the Web Server & Supervisor Dashboard
 
 ```bash
 python manage.py runserver
 ```
 
----
+Once running, navigate in your browser:
+- **Supervisor Dashboard**: [http://localhost:8000/dashboard/](http://localhost:8000/dashboard/) (or root `/` which redirects to dashboard)
+- **Faults Management**: [http://localhost:8000/dashboard/faults/](http://localhost:8000/dashboard/faults/)
+- **Machine Management**: [http://localhost:8000/dashboard/machines/](http://localhost:8000/dashboard/machines/)
+- **Django Admin**: [http://localhost:8000/admin/](http://localhost:8000/admin/)
 
-## 🌍 Africa's Talking USSD
-
-The USSD callback endpoint is:
-
-```text
-POST /ussd/
-```
-
-For local development, you can expose Django using ngrok:
-
-```bash
-ngrok http 8000
-```
-
-Then configure the Africa's Talking callback URL as:
-
-```text
-https://your-ngrok-url/ussd/
-```
+*(You will be prompted to log in using the superuser account created in step 6).*
 
 ---
 
-## 👨‍💻 Contributing
+### 🤖 2. Start the Telegram Development Bot
 
-Contributions are welcome.
-
-If you want to work on FactoryPulse:
-
-### 1. Fork the repository
-
-Create your own fork on GitHub.
-
-### 2. Clone your fork
+In a separate terminal (with the virtual environment activated):
 
 ```bash
-git clone <your-fork-url>
-cd FactoryPulse
+python manage.py run_telegram_bot
 ```
 
-### 3. Create a branch
-
-```bash
-git checkout -b feature/your-feature
-```
-
-### 4. Make your changes
-
-Keep changes focused and avoid unnecessary dependencies or architectural changes.
-
-### 5. Run tests
-
-```bash
-python manage.py check
-python manage.py test
-```
-
-Make sure existing functionality still works.
-
-### 6. Commit your changes
-
-```bash
-git add .
-git commit -m "Add your change"
-```
-
-### 7. Push your branch
-
-```bash
-git push origin feature/your-feature
-```
-
-Then open a Pull Request.
+Open Telegram, search for your bot, and send `/start` to begin reporting faults or viewing machine statuses.
 
 ---
 
-## 🧑‍💻 For Developers
+### 🌍 3. Africa's Talking USSD Gateway Testing
 
-Before modifying the project:
-
-1. Understand the existing Django structure.
-2. Check the existing models and USSD flow.
-3. Avoid creating duplicate models or business logic.
-4. Keep secrets in `.env`.
-5. Run tests before and after making changes.
-6. Keep the project simple and focused.
-
-The main goal is:
-
+The USSD endpoint is located at:
 ```text
-Simple
-   ↓
-Reliable
-   ↓
-Useful
+POST http://localhost:8000/ussd/
 ```
+
+> **Note**: Opening `/ussd/` in a web browser sends a `GET` request and returns `405 Method Not Allowed`. This is expected because Africa's Talking communicates strictly via `POST`.
+
+To connect to Africa's Talking Sandbox:
+1. Expose your local port via ngrok:
+   ```bash
+   ngrok http 8000
+   ```
+2. Copy your forwarding URL (e.g. `https://your-domain.ngrok-free.app`).
+3. Set your USSD Callback URL in the Africa's Talking Dashboard to:
+   ```text
+   https://your-domain.ngrok-free.app/ussd/
+   ```
+
+---
+
+## 🧪 Testing Coverage
+
+The automated test suite (`python manage.py test`) verifies:
+- **USSD flows**: Initial menus, machine selection, problem selection, custom text descriptions, severity grading, confirmation, cancellation, and credential protection.
+- **Service logic**: Input resolvers, status transition validations, user isolation, and stats calculation.
+- **Telegram bot**: Handlers, session contexts, user isolation, button formatting, and polling configuration.
+- **Supervisor dashboard**: Authorization barriers, staff permissions, status workflow enforcement, search/filter queries, and machine CRUD.
 
 ---
 
 ## 🗺️ Roadmap
 
-* [x] Django backend
-* [x] USSD foundation
-* [x] Fault reporting
-* [x] Database persistence
-* [x] Telegram development interface
-* [ ] Supervisor dashboard
-* [ ] Machine management
-* [ ] Technician assignment
-* [ ] SMS notifications
-* [ ] Analytics
-* [ ] Production Africa's Talking integration
+- [x] Django backend & SQLite persistence
+- [x] Africa's Talking-compatible USSD endpoint (`POST /ussd/`)
+- [x] Shared core business logic service layer
+- [x] Telegram development bot interface
+- [x] Protected Supervisor Dashboard with KPI metrics
+- [x] Machine management & operational tracking
+- [x] Fault status workflow state machine
+- [ ] SMS notifications for supervisors & technicians (Africa's Talking SMS)
+- [ ] Technician assignment module
+- [ ] Maintenance resolution analytics & downtime reports
+- [ ] Production cloud deployment
 
 ---
 
 ## 🏆 Vision
 
-FactoryPulse aims to make machine fault reporting faster and more accessible for African manufacturing environments.
-
-```text
-Report problems faster.
-Respond sooner.
-Keep production moving.
-```
+> **Report problems faster. Respond sooner. Keep production moving.**
