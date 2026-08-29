@@ -5,11 +5,12 @@ Shared across USSD, Telegram, and Supervisor Dashboard.
 """
 
 from typing import Optional, List, Dict, Union
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Count
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
-from .models import FaultReport, Machine, Technician
+from .models import FaultReport, Machine, Technician, FaultStatusHistory
 
 User = get_user_model()
 
@@ -93,7 +94,7 @@ def create_fault_report(
     """
     Creates and persists a FaultReport in the database.
     """
-    return FaultReport.objects.create(
+    fault = FaultReport.objects.create(
         machine=machine,
         problem=problem,
         severity=severity,
@@ -102,6 +103,15 @@ def create_fault_report(
         telegram_username=telegram_username or '',
         status=status or FaultReport.STATUS_OPEN,
     )
+
+    actor = f"Worker ({phone_number})" if phone_number else (f"Telegram (@{telegram_username})" if telegram_username else "Worker")
+    FaultStatusHistory.objects.create(
+        fault=fault,
+        status=fault.status,
+        actor_name=actor,
+        notes="Fault reported"
+    )
+    return fault
 
 
 def get_user_fault_reports(
@@ -186,6 +196,17 @@ def assign_fault_to_technician(
     fault.status = FaultReport.STATUS_ASSIGNED
     fault.save()
 
+    tech_name = tech_user.technician_profile.name if hasattr(tech_user, 'technician_profile') else (tech_user.get_full_name() or tech_user.username)
+    history_notes = f"Assigned to {tech_name}"
+    if notes:
+        history_notes += f": {notes.strip()}"
+    FaultStatusHistory.objects.create(
+        fault=fault,
+        status=FaultReport.STATUS_ASSIGNED,
+        actor_name=tech_name,
+        notes=history_notes,
+    )
+
     # Trigger SMS notification — safe, never rolls back the assignment
     try:
         from .sms_service import send_technician_assignment_sms
@@ -199,14 +220,14 @@ def assign_fault_to_technician(
     return fault
 
 
-def update_fault_status(fault_id: int, new_status: str) -> FaultReport:
+def update_fault_status(fault_id: int, new_status: str, actor_name: str = '') -> FaultReport:
     """
-    Updates the status of a FaultReport, enforcing validation rules.
+    Updates the status of a FaultReport, enforcing validation rules and logging history.
     Allowed transitions:
-      - OPEN -> ASSIGNED (via assignment or direct)
-      - ASSIGNED -> IN_PROGRESS
-      - IN_PROGRESS -> RESOLVED
-      - Any non-RESOLVED state -> OPEN (reopen)
+      - OPEN -> ASSIGNED / ACCEPTED
+      - ASSIGNED -> ACCEPTED / IN_PROGRESS / OPEN
+      - ACCEPTED -> IN_PROGRESS / OPEN
+      - IN_PROGRESS -> RESOLVED / OPEN
     Raises ValidationError for invalid transitions.
     """
     try:
@@ -242,6 +263,29 @@ def update_fault_status(fault_id: int, new_status: str) -> FaultReport:
 
     fault.status = new_status
     fault.save()
+
+    # Determine actor & descriptive notes for history
+    if not actor_name and fault.assigned_to:
+        actor_name = fault.assigned_to.technician_profile.name if hasattr(fault.assigned_to, 'technician_profile') else (fault.assigned_to.get_full_name() or fault.assigned_to.username)
+
+    if new_status == FaultReport.STATUS_ACCEPTED:
+        note_text = "Technician accepted the fault"
+    elif new_status == FaultReport.STATUS_IN_PROGRESS:
+        note_text = "Technician started work"
+    elif new_status == FaultReport.STATUS_RESOLVED:
+        note_text = "Technician resolved the fault"
+    elif new_status == FaultReport.STATUS_OPEN:
+        note_text = "Reverted status to OPEN"
+    else:
+        note_text = f"Status updated to {new_status}"
+
+    FaultStatusHistory.objects.create(
+        fault=fault,
+        status=new_status,
+        actor_name=actor_name or "Supervisor",
+        notes=note_text,
+    )
+
     return fault
 
 
@@ -390,35 +434,74 @@ def process_incoming_technician_sms(sender_phone: str, text: str) -> dict:
 
 def get_dashboard_stats() -> dict:
     """
-    Returns fault statistics for the dashboard.
+    Returns comprehensive fault statistics and intelligence for the dashboard.
+    Summary cards:
+      - Total Faults
+      - Open Faults
+      - Assigned Faults
+      - Accepted Faults
+      - In Progress
+      - Critical Faults
+      - Resolved Today
     """
     total = FaultReport.objects.count()
     open_count = FaultReport.objects.filter(status=FaultReport.STATUS_OPEN).count()
-    critical = FaultReport.objects.filter(severity='Critical').count()
-    resolved = FaultReport.objects.filter(status=FaultReport.STATUS_RESOLVED).count()
+    assigned_count = FaultReport.objects.filter(status=FaultReport.STATUS_ASSIGNED).count()
+    accepted_count = FaultReport.objects.filter(status=FaultReport.STATUS_ACCEPTED).count()
+    in_progress_count = FaultReport.objects.filter(status=FaultReport.STATUS_IN_PROGRESS).count()
+    critical_count = FaultReport.objects.filter(severity='Critical').count()
+    resolved_count = FaultReport.objects.filter(status=FaultReport.STATUS_RESOLVED).count()
+
+    today = timezone.now().date()
+
+    # Calculate Resolved Today count via FaultStatusHistory or created_at
+    resolved_today_ids = FaultStatusHistory.objects.filter(
+        status=FaultReport.STATUS_RESOLVED,
+        timestamp__date=today
+    ).values_list('fault_id', flat=True).distinct()
+
+    resolved_today = resolved_today_ids.count()
+    if resolved_today == 0:
+        resolved_today = FaultReport.objects.filter(
+            status=FaultReport.STATUS_RESOLVED,
+            created_at__date=today
+        ).count()
 
     # Breakdown by severity
     severity_breakdown = {
         'Low': FaultReport.objects.filter(severity='Low').count(),
         'Medium': FaultReport.objects.filter(severity='Medium').count(),
         'High': FaultReport.objects.filter(severity='High').count(),
-        'Critical': critical,
+        'Critical': critical_count,
     }
+
+    # Breakdown by machine
+    machine_counts_qs = FaultReport.objects.values('machine').annotate(count=Count('id')).order_by('-count')
+    machine_breakdown = [
+        {'machine': item['machine'], 'count': item['count']}
+        for item in machine_counts_qs
+    ]
 
     # Breakdown by status
     status_breakdown = {
         'OPEN': open_count,
-        'ASSIGNED': FaultReport.objects.filter(status=FaultReport.STATUS_ASSIGNED).count(),
-        'IN_PROGRESS': FaultReport.objects.filter(status=FaultReport.STATUS_IN_PROGRESS).count(),
-        'RESOLVED': resolved,
+        'ASSIGNED': assigned_count,
+        'ACCEPTED': accepted_count,
+        'IN_PROGRESS': in_progress_count,
+        'RESOLVED': resolved_count,
     }
 
     return {
         'total_faults': total,
         'open_faults': open_count,
-        'critical_faults': critical,
-        'resolved_faults': resolved,
+        'assigned_faults': assigned_count,
+        'accepted_faults': accepted_count,
+        'in_progress_faults': in_progress_count,
+        'critical_faults': critical_count,
+        'resolved_faults': resolved_count,
+        'resolved_today': resolved_today,
         'severity_counts': severity_breakdown,
+        'machine_counts': machine_breakdown,
         'status_counts': status_breakdown,
     }
 

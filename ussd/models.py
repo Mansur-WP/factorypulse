@@ -85,3 +85,22 @@ class Technician(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.phone_number})" if self.phone_number else self.name
+
+
+class FaultStatusHistory(models.Model):
+    fault = models.ForeignKey(
+        FaultReport,
+        on_delete=models.CASCADE,
+        related_name='history',
+    )
+    status = models.CharField(max_length=20, choices=FaultReport.STATUS_CHOICES)
+    actor_name = models.CharField(max_length=150, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp', 'id']
+
+    def __str__(self):
+        return f"Fault #{self.fault_id} -> {self.status} at {self.timestamp}"
+

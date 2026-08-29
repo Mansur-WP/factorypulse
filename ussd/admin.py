@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import FaultReport, Machine, Technician
+from .models import FaultReport, Machine, Technician, FaultStatusHistory
 
 
 @admin.register(FaultReport)
@@ -20,3 +20,11 @@ class MachineAdmin(admin.ModelAdmin):
 class TechnicianAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'user', 'phone_number', 'created_at')
     search_fields = ('name', 'phone_number', 'user__username')
+
+
+@admin.register(FaultStatusHistory)
+class FaultStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'fault', 'status', 'actor_name', 'timestamp')
+    list_filter = ('status', 'timestamp')
+    search_fields = ('fault__id', 'actor_name', 'notes')
+

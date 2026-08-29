@@ -108,6 +108,40 @@
                     <span class="detail-value">{{ fault.created_at|date:"F d, Y H:i" }} ({{ fault.created_at|timesince }} ago)</span>
                 </div>
             </div>
+
+            <!-- Lifecycle Timeline -->
+            <div style="margin-top: 2rem; border-top: 2px solid var(--border-color); padding-top: 1.5rem;">
+                <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">
+                    ⏱️ Fault Lifecycle Timeline
+                </h4>
+                <div class="timeline-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for entry in timeline %}
+                    <div class="timeline-entry" style="display: flex; gap: 0.85rem; align-items: flex-start;">
+                        <div style="flex-shrink: 0; min-width: 65px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-top: 0.2rem;">
+                            {{ entry.timestamp|date:"H:i" }}
+                        </div>
+                        <div style="flex-grow: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.65rem 0.85rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <span class="badge {{ entry.status|lower }}">{{ entry.get_status_display }}</span>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">{{ entry.timestamp|date:"M d, Y" }}</span>
+                            </div>
+                            <div style="font-size: 0.875rem; font-weight: 600; color: #1e293b;">
+                                {% if entry.notes %}{{ entry.notes }}{% else %}Status set to {{ entry.get_status_display }}{% endif %}
+                            </div>
+                            {% if entry.actor_name %}
+                            <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                By: <strong>{{ entry.actor_name }}</strong>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+                        No lifecycle history recorded.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
         <!-- Right: Actions & Workflow -->

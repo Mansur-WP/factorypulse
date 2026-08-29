@@ -5,23 +5,98 @@
 {% block page_title %}Dashboard Home{% endblock %}
 
 {% block content %}
-    <!-- Summary Stats Grid -->
-    <div class="stats-grid">
-        <div class="stat-card total">
-            <div class="stat-label">Total Faults</div>
-            <div class="stat-value">{{ stats.total_faults }}</div>
+    <!-- Summary Stats Grid (7 Operational KPI Cards) -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="stat-card total" style="padding: 1rem;">
+            <div class="stat-label" style="font-size: 0.75rem;">Total Faults</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.total_faults }}</div>
         </div>
-        <div class="stat-card open">
-            <div class="stat-label">Open Faults</div>
-            <div class="stat-value">{{ stats.open_faults }}</div>
+        <div class="stat-card open" style="padding: 1rem;">
+            <div class="stat-label" style="font-size: 0.75rem;">Open Faults</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.open_faults }}</div>
         </div>
-        <div class="stat-card critical">
-            <div class="stat-label">Critical Faults</div>
-            <div class="stat-value">{{ stats.critical_faults }}</div>
+        <div class="stat-card assigned" style="padding: 1rem; border-top-color: #3b82f6;">
+            <div class="stat-label" style="font-size: 0.75rem;">Assigned</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.assigned_faults }}</div>
         </div>
-        <div class="stat-card resolved">
-            <div class="stat-label">Resolved Faults</div>
-            <div class="stat-value">{{ stats.resolved_faults }}</div>
+        <div class="stat-card accepted" style="padding: 1rem; border-top-color: #6366f1;">
+            <div class="stat-label" style="font-size: 0.75rem;">Accepted</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.accepted_faults }}</div>
+        </div>
+        <div class="stat-card in-progress" style="padding: 1rem; border-top-color: #f59e0b;">
+            <div class="stat-label" style="font-size: 0.75rem;">In Progress</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.in_progress_faults }}</div>
+        </div>
+        <div class="stat-card critical" style="padding: 1rem;">
+            <div class="stat-label" style="font-size: 0.75rem;">Critical</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.critical_faults }}</div>
+        </div>
+        <div class="stat-card resolved" style="padding: 1rem;">
+            <div class="stat-label" style="font-size: 0.75rem;">Resolved Today</div>
+            <div class="stat-value" style="font-size: 1.6rem;">{{ stats.resolved_today }}</div>
+        </div>
+    </div>
+
+    <!-- Analytics Breakdown Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+        <!-- Faults by Machine -->
+        <div class="panel" style="margin-bottom: 0;">
+            <div class="panel-header">
+                <h3>Faults by Machine</h3>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Machine</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in stats.machine_counts %}
+                    <tr>
+                        <td><strong>{{ m.machine }}</strong></td>
+                        <td style="text-align: right;"><strong>{{ m.count }}</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" style="text-align: center; color: var(--text-muted);">No data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Faults by Severity -->
+        <div class="panel" style="margin-bottom: 0;">
+            <div class="panel-header">
+                <h3>Faults by Severity</h3>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge low">Low</span></td>
+                        <td style="text-align: right;"><strong>{{ stats.severity_counts.Low }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge medium">Medium</span></td>
+                        <td style="text-align: right;"><strong>{{ stats.severity_counts.Medium }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge high">High</span></td>
+                        <td style="text-align: right;"><strong>{{ stats.severity_counts.High }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge critical">Critical</span></td>
+                        <td style="text-align: right;"><strong>{{ stats.severity_counts.Critical }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 

@@ -144,7 +144,10 @@ def dashboard_fault_detail(request, pk):
     """
     Displays the full details of a specific fault report and handles status updates & technician assignments.
     """
-    fault = get_object_or_404(FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile'), pk=pk)
+    fault = get_object_or_404(
+        FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile').prefetch_related('history'),
+        pk=pk
+    )
 
     if request.method == 'POST':
         action = request.POST.get('action', '').strip()
@@ -175,10 +178,12 @@ def dashboard_fault_detail(request, pk):
             return redirect('dashboard_fault_detail', pk=fault.id)
 
     available_technicians = get_available_technicians()
+    timeline = fault.history.all().order_by('timestamp', 'id')
 
     context = {
         'fault': fault,
         'available_technicians': available_technicians,
+        'timeline': timeline,
     }
     return render(request, 'ussd/dashboard_fault_detail.html', context)
 

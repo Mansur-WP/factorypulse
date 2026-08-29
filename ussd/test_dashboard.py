@@ -488,3 +488,128 @@ class TechnicianAssignmentTests(TestCase):
         self.assertIn('Making noise', content_abd)
         self.assertNotIn('Overheating', content_abd)
 
+
+@patch('ussd.sms_service.send_technician_assignment_sms')
+class DashboardIntelligenceAndTimelineTests(TestCase):
+    """
+    Tests for Dashboard Intelligence (7 KPI Cards, Machine & Severity analytics)
+    and Fault Lifecycle Timeline (FaultStatusHistory creation & detail rendering).
+    """
+
+    def setUp(self, mock_sms=None):
+        self.client = Client()
+        self.staff_user = User.objects.create_user(
+            username='staff_intel', password='password123', is_staff=True
+        )
+        Machine.objects.all().delete()
+        Technician.objects.all().delete()
+        FaultReport.objects.all().delete()
+
+        self.tech_user = User.objects.create_user(username='tech_intel', password='password123')
+        self.tech_profile = Technician.objects.create(
+            user=self.tech_user, name='Intel Tech', phone_number='+2348099998888'
+        )
+
+        self.m1 = Machine.objects.create(name='Generator')
+        self.m2 = Machine.objects.create(name='Packaging Machine')
+
+    def test_dashboard_stats_kpi_cards(self, mock_sms):
+        """get_dashboard_stats returns correct counts for all 7 KPI cards."""
+        from ussd.services import create_fault_report, assign_fault_to_technician
+
+        f1 = create_fault_report(machine='Generator', problem='Oil leak', severity='Low')  # OPEN
+        f2 = create_fault_report(machine='Generator', problem='Overheating', severity='Critical')
+        f3 = create_fault_report(machine='Packaging Machine', problem='Broken belt', severity='High')
+        f4 = create_fault_report(machine='Packaging Machine', problem='Sensor error', severity='Medium')
+        f5 = create_fault_report(machine='Generator', problem='No power', severity='Critical')
+
+        # State updates
+        assign_fault_to_technician(f2.id, self.tech_user)  # ASSIGNED
+        assign_fault_to_technician(f3.id, self.tech_user)
+        update_fault_status(f3.id, FaultReport.STATUS_ACCEPTED)  # ACCEPTED
+
+        assign_fault_to_technician(f4.id, self.tech_user)
+        update_fault_status(f4.id, FaultReport.STATUS_IN_PROGRESS)  # IN_PROGRESS
+
+        assign_fault_to_technician(f5.id, self.tech_user)
+        update_fault_status(f5.id, FaultReport.STATUS_IN_PROGRESS)
+        update_fault_status(f5.id, FaultReport.STATUS_RESOLVED)  # RESOLVED
+
+        stats = get_dashboard_stats()
+        self.assertEqual(stats['total_faults'], 5)
+        self.assertEqual(stats['open_faults'], 1)
+        self.assertEqual(stats['assigned_faults'], 1)
+        self.assertEqual(stats['accepted_faults'], 1)
+        self.assertEqual(stats['in_progress_faults'], 1)
+        self.assertEqual(stats['critical_faults'], 2)
+        self.assertEqual(stats['resolved_today'], 1)
+
+    def test_analytics_machine_and_severity_breakdown(self, mock_sms):
+        """get_dashboard_stats returns machine aggregation and severity counts."""
+        from ussd.services import create_fault_report
+
+        create_fault_report(machine='Generator', problem='P1', severity='Low')
+        create_fault_report(machine='Generator', problem='P2', severity='Medium')
+        create_fault_report(machine='Packaging Machine', problem='P3', severity='Critical')
+
+        stats = get_dashboard_stats()
+
+        # Severity counts
+        self.assertEqual(stats['severity_counts']['Low'], 1)
+        self.assertEqual(stats['severity_counts']['Medium'], 1)
+        self.assertEqual(stats['severity_counts']['Critical'], 1)
+
+        # Machine counts
+        machines = {item['machine']: item['count'] for item in stats['machine_counts']}
+        self.assertEqual(machines.get('Generator'), 2)
+        self.assertEqual(machines.get('Packaging Machine'), 1)
+
+    def test_history_logged_on_report_creation_and_workflow(self, mock_sms):
+        """FaultStatusHistory records entries automatically across the entire fault lifecycle."""
+        from ussd.services import create_fault_report, assign_fault_to_technician
+        from ussd.models import FaultStatusHistory
+
+        # 1. Report creation
+        fault = create_fault_report(machine='Generator', problem='Noise', severity='High')
+        h1 = FaultStatusHistory.objects.filter(fault=fault)
+        self.assertEqual(h1.count(), 1)
+        self.assertEqual(h1.first().status, FaultReport.STATUS_OPEN)
+
+        # 2. Assignment
+        assign_fault_to_technician(fault.id, self.tech_user)
+        self.assertEqual(FaultStatusHistory.objects.filter(fault=fault).count(), 2)
+
+        # 3. Accepted
+        update_fault_status(fault.id, FaultReport.STATUS_ACCEPTED)
+        self.assertEqual(FaultStatusHistory.objects.filter(fault=fault).count(), 3)
+
+        # 4. In Progress
+        update_fault_status(fault.id, FaultReport.STATUS_IN_PROGRESS)
+        self.assertEqual(FaultStatusHistory.objects.filter(fault=fault).count(), 4)
+
+        # 5. Resolved
+        update_fault_status(fault.id, FaultReport.STATUS_RESOLVED)
+        history_list = list(FaultStatusHistory.objects.filter(fault=fault).order_by('timestamp', 'id'))
+        self.assertEqual(len(history_list), 5)
+        self.assertEqual(history_list[-1].status, FaultReport.STATUS_RESOLVED)
+
+    def test_fault_detail_renders_timeline(self, mock_sms):
+        """dashboard_fault_detail view renders the lifecycle timeline history."""
+        from ussd.services import create_fault_report, assign_fault_to_technician
+
+        fault = create_fault_report(machine='Generator', problem='Overheating', severity='High')
+        assign_fault_to_technician(fault.id, self.tech_user)
+
+        self.client.login(username='staff_intel', password='password123')
+        url = reverse('dashboard_fault_detail', args=[fault.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('timeline', response.context)
+        self.assertEqual(len(response.context['timeline']), 2)
+
+        content = response.content.decode('utf-8')
+        self.assertIn('Fault Lifecycle Timeline', content)
+        self.assertIn('Intel Tech', content)
+
+
