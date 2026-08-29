@@ -37,33 +37,70 @@
         </div>
     </div>
 
+    <!-- Overall Downtime Intelligence Summary -->
+    <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem;">
+            ⚡ Downtime Intelligence Overview
+        </h3>
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div class="stat-card" style="padding: 1rem; border-top-color: #dc2626;">
+                <div class="stat-label" style="font-size: 0.75rem;">Total Downtime</div>
+                <div class="stat-value" style="font-size: 1.6rem; color: #991b1b;">{{ stats.downtime.formatted_total_downtime }}</div>
+            </div>
+            <div class="stat-card" style="padding: 1rem; border-top-color: #2563eb;">
+                <div class="stat-label" style="font-size: 0.75rem;">Avg Resolution Time</div>
+                <div class="stat-value" style="font-size: 1.6rem; color: #1e40af;">{{ stats.downtime.formatted_avg_resolution }}</div>
+            </div>
+            <div class="stat-card" style="padding: 1rem; border-top-color: #f59e0b;">
+                <div class="stat-label" style="font-size: 0.75rem;">Active Downtime Incidents</div>
+                <div class="stat-value" style="font-size: 1.6rem; color: #b45309;">{{ stats.downtime.active_incidents }}</div>
+            </div>
+            <div class="stat-card" style="padding: 1rem; border-top-color: #8b5cf6;">
+                <div class="stat-label" style="font-size: 0.75rem;">Most Affected Machine</div>
+                <div class="stat-value" style="font-size: 1.3rem; color: #5b21b6; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {{ stats.downtime.most_affected_machine }}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Analytics Breakdown Grid -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-        <!-- Faults by Machine -->
+        <!-- Downtime by Machine Table -->
         <div class="panel" style="margin-bottom: 0;">
             <div class="panel-header">
-                <h3>Faults by Machine</h3>
+                <h3>Downtime by Machine</h3>
             </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Machine</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for m in stats.machine_counts %}
-                    <tr>
-                        <td><strong>{{ m.machine }}</strong></td>
-                        <td style="text-align: right;"><strong>{{ m.count }}</strong></td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="2" style="text-align: center; color: var(--text-muted);">No data available</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Machine</th>
+                            <th style="text-align: center;">Faults</th>
+                            <th style="text-align: center;">Resolved</th>
+                            <th style="text-align: center;">Active</th>
+                            <th style="text-align: right;">Downtime</th>
+                            <th style="text-align: right;">Avg Res.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stats.downtime.machine_downtime_list %}
+                        <tr>
+                            <td><strong>{{ item.machine }}</strong></td>
+                            <td style="text-align: center;">{{ item.total_faults }}</td>
+                            <td style="text-align: center; color: #065f46;">{{ item.resolved_faults }}</td>
+                            <td style="text-align: center; color: #b45309;">{{ item.active_faults }}</td>
+                            <td style="text-align: right;"><strong>{{ item.formatted_downtime }}</strong></td>
+                            <td style="text-align: right; color: var(--text-muted);">{{ item.formatted_avg_resolution }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted);">No downtime records.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Faults by Severity -->
@@ -99,6 +136,45 @@
             </table>
         </div>
     </div>
+
+    <!-- Critical Active Faults Section -->
+    {% if stats.downtime.critical_active_faults %}
+    <div class="panel" style="margin-bottom: 1.5rem; border-left: 4px solid #dc2626; background-color: #fff5f5;">
+        <div class="panel-header">
+            <h3 style="color: #991b1b;">⚠️ Critical Active Faults (Immediate Action Required)</h3>
+        </div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fault ID</th>
+                        <th>Machine</th>
+                        <th>Problem</th>
+                        <th>Assigned Technician</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Current Downtime</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in stats.downtime.critical_active_faults %}
+                    <tr>
+                        <td><strong>#{{ item.fault_id }}</strong></td>
+                        <td><strong>{{ item.machine }}</strong></td>
+                        <td>{{ item.problem }}</td>
+                        <td>👤 {{ item.assigned_technician }}</td>
+                        <td><span class="badge {{ item.status|lower }}">{{ item.status_display }}</span></td>
+                        <td style="text-align: right; color: #dc2626; font-weight: 700;">{{ item.current_downtime }}</td>
+                        <td>
+                            <a href="{% url 'dashboard_fault_detail' item.fault_id %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Dashboard Panels Layout -->
     <div class="dashboard-panels">

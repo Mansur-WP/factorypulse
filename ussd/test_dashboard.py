@@ -613,3 +613,184 @@ class DashboardIntelligenceAndTimelineTests(TestCase):
         self.assertIn('Intel Tech', content)
 
 
+@patch('ussd.sms_service.send_technician_assignment_sms')
+class DowntimeIntelligenceTests(TestCase):
+    """
+    Tests for Downtime Intelligence metrics, calculations, aggregation, sorting, and detail rendering.
+    """
+
+    def setUp(self, mock_sms=None):
+        self.client = Client()
+        self.staff_user = User.objects.create_user(
+            username='staff_downtime', password='password123', is_staff=True
+        )
+        Machine.objects.all().delete()
+        Technician.objects.all().delete()
+        FaultReport.objects.all().delete()
+
+        self.tech_user = User.objects.create_user(username='tech_down', password='password123')
+        self.tech_profile = Technician.objects.create(
+            user=self.tech_user, name='Downtime Tech', phone_number='+2348077776666'
+        )
+
+        self.m1 = Machine.objects.create(name='Generator')
+        self.m2 = Machine.objects.create(name='Packaging Machine')
+
+    def test_empty_database_downtime_metrics(self, mock_sms):
+        """Zero faults in DB returns zero downtime and 'None' for most affected machine."""
+        from ussd.services import get_downtime_analytics
+
+        dt_data = get_downtime_analytics()
+        self.assertEqual(dt_data['total_downtime_seconds'], 0)
+        self.assertEqual(dt_data['formatted_total_downtime'], '0m')
+        self.assertEqual(dt_data['avg_resolution_seconds'], 0)
+        self.assertEqual(dt_data['formatted_avg_resolution'], '0m')
+        self.assertEqual(dt_data['active_incidents'], 0)
+        self.assertEqual(dt_data['most_affected_machine'], 'None')
+        self.assertEqual(len(dt_data['critical_active_faults']), 0)
+
+    def test_calculate_fault_downtime_resolved(self, mock_sms):
+        """Calculates downtime for a resolved fault using FaultStatusHistory timestamps."""
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        from ussd.services import create_fault_report, calculate_fault_downtime
+        from ussd.models import FaultStatusHistory
+
+        t0 = timezone.now() - timedelta(hours=3)
+        t_resolved = t0 + timedelta(hours=2)  # 2 hours downtime
+
+        fault = create_fault_report(machine='Generator', problem='Leak', severity='High')
+        # Adjust history timestamps deterministically
+        h_open = fault.history.filter(status=FaultReport.STATUS_OPEN).first()
+        h_open.timestamp = t0
+        h_open.save()
+
+        update_fault_status(fault.id, FaultReport.STATUS_ASSIGNED)
+        update_fault_status(fault.id, FaultReport.STATUS_IN_PROGRESS)
+        update_fault_status(fault.id, FaultReport.STATUS_RESOLVED)
+
+        h_resolved = fault.history.filter(status=FaultReport.STATUS_RESOLVED).first()
+        h_resolved.timestamp = t_resolved
+        h_resolved.save()
+
+        fault.refresh_from_db()
+        dt_info = calculate_fault_downtime(fault)
+
+        self.assertTrue(dt_info['is_resolved'])
+        self.assertEqual(dt_info['duration_seconds'], 7200)  # 2 hours = 7200 sec
+        self.assertEqual(dt_info['formatted_duration'], '2h')
+
+    def test_calculate_fault_downtime_active(self, mock_sms):
+        """Calculates current downtime for an active fault using (now - open_time)."""
+        from datetime import timedelta
+        from django.utils import timezone
+        from ussd.services import create_fault_report, calculate_fault_downtime
+
+        t0 = timezone.now() - timedelta(minutes=45)
+        fault = create_fault_report(machine='Generator', problem='Overheating', severity='Medium')
+
+        h_open = fault.history.filter(status=FaultReport.STATUS_OPEN).first()
+        h_open.timestamp = t0
+        h_open.save()
+
+        now_test = t0 + timedelta(minutes=45)
+        dt_info = calculate_fault_downtime(fault, now=now_test)
+
+        self.assertFalse(dt_info['is_resolved'])
+        self.assertEqual(dt_info['duration_seconds'], 2700)  # 45 minutes = 2700 sec
+        self.assertEqual(dt_info['formatted_duration'], '45m')
+
+    def test_machine_downtime_aggregation_and_sorting(self, mock_sms):
+        """Machine downtime list aggregates total downtime and sorts descending."""
+        from datetime import timedelta
+        from django.utils import timezone
+        from ussd.services import create_fault_report, get_downtime_analytics
+
+        t0 = timezone.now() - timedelta(hours=5)
+
+        # Fault 1 on Packaging Machine: 4 hours downtime
+        f1 = create_fault_report(machine='Packaging Machine', problem='P1', severity='High')
+        h1_open = f1.history.filter(status=FaultReport.STATUS_OPEN).first()
+        h1_open.timestamp = t0
+        h1_open.save()
+
+        update_fault_status(f1.id, FaultReport.STATUS_ASSIGNED)
+        update_fault_status(f1.id, FaultReport.STATUS_IN_PROGRESS)
+        update_fault_status(f1.id, FaultReport.STATUS_RESOLVED)
+        h1_res = f1.history.filter(status=FaultReport.STATUS_RESOLVED).first()
+        h1_res.timestamp = t0 + timedelta(hours=4)
+        h1_res.save()
+
+        # Fault 2 on Generator: 1 hour downtime
+        f2 = create_fault_report(machine='Generator', problem='P2', severity='Low')
+        h2_open = f2.history.filter(status=FaultReport.STATUS_OPEN).first()
+        h2_open.timestamp = t0
+        h2_open.save()
+
+        update_fault_status(f2.id, FaultReport.STATUS_ASSIGNED)
+        update_fault_status(f2.id, FaultReport.STATUS_IN_PROGRESS)
+        update_fault_status(f2.id, FaultReport.STATUS_RESOLVED)
+        h2_res = f2.history.filter(status=FaultReport.STATUS_RESOLVED).first()
+        h2_res.timestamp = t0 + timedelta(hours=1)
+        h2_res.save()
+
+        now_eval = t0 + timedelta(hours=5)
+        analytics = get_downtime_analytics(now=now_eval)
+
+        # Total downtime
+        self.assertEqual(analytics['total_downtime_seconds'], 18000)  # 5 hours = 18000 sec
+        self.assertEqual(analytics['most_affected_machine'], 'Packaging Machine')
+
+        # Check list sorting: Packaging Machine (4h) should be first, Generator (1h) second
+        machine_list = analytics['machine_downtime_list']
+        self.assertEqual(machine_list[0]['machine'], 'Packaging Machine')
+        self.assertEqual(machine_list[0]['formatted_downtime'], '4h')
+        self.assertEqual(machine_list[1]['machine'], 'Generator')
+        self.assertEqual(machine_list[1]['formatted_downtime'], '1h')
+
+    def test_critical_active_faults_list(self, mock_sms):
+        """Critical active faults list includes only unresolved Critical faults."""
+        from ussd.services import create_fault_report, assign_fault_to_technician, get_downtime_analytics
+
+        # 1. Critical + Active -> Should be included
+        f1 = create_fault_report(machine='Generator', problem='Explosion risk', severity='Critical')
+        assign_fault_to_technician(f1.id, self.tech_user)
+
+        # 2. Critical + Resolved -> Should NOT be in critical active list
+        f2 = create_fault_report(machine='Packaging Machine', problem='Fire alarm', severity='Critical')
+        assign_fault_to_technician(f2.id, self.tech_user)
+        update_fault_status(f2.id, FaultReport.STATUS_IN_PROGRESS)
+        update_fault_status(f2.id, FaultReport.STATUS_RESOLVED)
+
+        # 3. High + Active -> Should NOT be in critical active list
+        f3 = create_fault_report(machine='Generator', problem='Belt slip', severity='High')
+
+        analytics = get_downtime_analytics()
+        crit_active = analytics['critical_active_faults']
+
+        self.assertEqual(len(crit_active), 1)
+        self.assertEqual(crit_active[0]['fault_id'], f1.id)
+        self.assertEqual(crit_active[0]['machine'], 'Generator')
+        self.assertEqual(crit_active[0]['assigned_technician'], 'Downtime Tech')
+
+    def test_fault_detail_view_downtime_rendering(self, mock_sms):
+        """dashboard_fault_detail renders Reported At, Resolved At, and Downtime metrics."""
+        from ussd.services import create_fault_report, assign_fault_to_technician
+
+        fault = create_fault_report(machine='Generator', problem='Overheating', severity='Critical')
+        assign_fault_to_technician(fault.id, self.tech_user)
+
+        self.client.login(username='staff_downtime', password='password123')
+        url = reverse('dashboard_fault_detail', args=[fault.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('downtime_info', response.context)
+
+        content = response.content.decode('utf-8')
+        self.assertIn('Reported At', content)
+        self.assertIn('Current Downtime', content)
+        self.assertIn('(Active)', content)
+
+
+

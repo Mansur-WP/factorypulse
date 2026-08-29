@@ -4,6 +4,7 @@ FactoryPulse Core Business Logic Services
 Shared across USSD, Telegram, and Supervisor Dashboard.
 """
 
+from datetime import timedelta
 from typing import Optional, List, Dict, Union
 from django.db.models import QuerySet, Count
 from django.contrib.auth import get_user_model
@@ -491,6 +492,8 @@ def get_dashboard_stats() -> dict:
         'RESOLVED': resolved_count,
     }
 
+    downtime_data = get_downtime_analytics(now=timezone.now())
+
     return {
         'total_faults': total,
         'open_faults': open_count,
@@ -503,6 +506,181 @@ def get_dashboard_stats() -> dict:
         'severity_counts': severity_breakdown,
         'machine_counts': machine_breakdown,
         'status_counts': status_breakdown,
+        'downtime': downtime_data,
+    }
+
+
+def format_duration(td: timedelta) -> str:
+    """
+    Formats a timedelta object into a clean, human-readable string.
+    Examples: '2d 4h', '3h 15m', '45m', '0m'
+    """
+    if not td or td.total_seconds() <= 0:
+        return '0m'
+
+    total_seconds = int(td.total_seconds())
+    days, remainder = divmod(total_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _ = divmod(remainder, 60)
+
+    if days > 0:
+        return f"{days}d {hours}h" if hours > 0 else f"{days}d"
+    elif hours > 0:
+        return f"{hours}h {minutes}m" if minutes > 0 else f"{hours}h"
+    else:
+        return f"{minutes}m" if minutes > 0 else "0m"
+
+
+def calculate_fault_downtime(fault: FaultReport, now=None) -> dict:
+    """
+    Calculates the exact downtime for a FaultReport using FaultStatusHistory timestamps.
+    - If resolved: downtime = resolved_timestamp - initial_open_timestamp
+    - If active: downtime = current_time - initial_open_timestamp
+    """
+    now_dt = now or timezone.now()
+
+    # Find initial OPEN timestamp from history or fallback to created_at
+    open_history = fault.history.filter(status=FaultReport.STATUS_OPEN).order_by('timestamp', 'id').first()
+    open_time = open_history.timestamp if open_history else fault.created_at
+
+    is_resolved = (fault.status == FaultReport.STATUS_RESOLVED)
+
+    if is_resolved:
+        resolved_history = fault.history.filter(status=FaultReport.STATUS_RESOLVED).order_by('-timestamp', '-id').first()
+        resolved_time = resolved_history.timestamp if resolved_history else fault.created_at
+        end_time = resolved_time
+    else:
+        resolved_time = None
+        end_time = now_dt
+
+    raw_duration = end_time - open_time
+    duration = max(raw_duration, timedelta(seconds=0))
+
+    return {
+        'open_time': open_time,
+        'resolved_time': resolved_time,
+        'is_resolved': is_resolved,
+        'duration': duration,
+        'duration_seconds': int(duration.total_seconds()),
+        'formatted_duration': format_duration(duration),
+    }
+
+
+def get_downtime_analytics(now=None) -> dict:
+    """
+    Calculates machine downtime aggregation, overall downtime summary, and critical active faults.
+    """
+    now_dt = now or timezone.now()
+
+    # Prefetch all fault reports with history and assigned_to profile
+    faults = FaultReport.objects.select_related(
+        'assigned_to', 'assigned_to__technician_profile'
+    ).prefetch_related('history').all()
+
+    machine_stats = {}
+
+    # Initialize entries for existing Machine models
+    for m in Machine.objects.all():
+        machine_stats[m.name] = {
+            'machine': m.name,
+            'total_faults': 0,
+            'resolved_faults': 0,
+            'active_faults': 0,
+            'total_downtime_seconds': 0,
+            'resolved_downtime_seconds': 0,
+        }
+
+    total_downtime_sec = 0
+    total_resolved_downtime_sec = 0
+    total_resolved_count = 0
+    active_incidents_count = 0
+    critical_incidents_count = 0
+    critical_active_faults = []
+
+    for f in faults:
+        m_name = f.machine
+        if m_name not in machine_stats:
+            machine_stats[m_name] = {
+                'machine': m_name,
+                'total_faults': 0,
+                'resolved_faults': 0,
+                'active_faults': 0,
+                'total_downtime_seconds': 0,
+                'resolved_downtime_seconds': 0,
+            }
+
+        dt_info = calculate_fault_downtime(f, now=now_dt)
+        sec = dt_info['duration_seconds']
+
+        machine_stats[m_name]['total_faults'] += 1
+        total_downtime_sec += sec
+
+        if f.severity == 'Critical':
+            critical_incidents_count += 1
+
+        if dt_info['is_resolved']:
+            machine_stats[m_name]['resolved_faults'] += 1
+            machine_stats[m_name]['resolved_downtime_seconds'] += sec
+            total_resolved_downtime_sec += sec
+            total_resolved_count += 1
+        else:
+            machine_stats[m_name]['active_faults'] += 1
+            active_incidents_count += 1
+
+            if f.severity == 'Critical':
+                tech_name = f.assigned_to.technician_profile.name if (f.assigned_to and hasattr(f.assigned_to, 'technician_profile')) else (f.assigned_to.username if f.assigned_to else "Unassigned")
+                critical_active_faults.append({
+                    'fault_id': f.id,
+                    'machine': f.machine,
+                    'problem': f.problem,
+                    'assigned_technician': tech_name,
+                    'status': f.status,
+                    'status_display': f.get_status_display(),
+                    'current_downtime': dt_info['formatted_duration'],
+                })
+
+        machine_stats[m_name]['total_downtime_seconds'] += sec
+
+    # Build sorted machine breakdown list
+    machine_downtime_list = []
+    for m_name, m_data in machine_stats.items():
+        res_count = m_data['resolved_faults']
+        res_downtime_sec = m_data['resolved_downtime_seconds']
+        avg_res_sec = int(res_downtime_sec / res_count) if res_count > 0 else 0
+
+        machine_downtime_list.append({
+            'machine': m_name,
+            'total_faults': m_data['total_faults'],
+            'resolved_faults': res_count,
+            'active_faults': m_data['active_faults'],
+            'total_downtime_seconds': m_data['total_downtime_seconds'],
+            'formatted_downtime': format_duration(timedelta(seconds=m_data['total_downtime_seconds'])),
+            'avg_resolution_seconds': avg_res_sec,
+            'formatted_avg_resolution': format_duration(timedelta(seconds=avg_res_sec)),
+        })
+
+    # Sort machines by total_downtime_seconds descending
+    machine_downtime_list.sort(key=lambda x: x['total_downtime_seconds'], reverse=True)
+
+    # Most affected machine
+    if machine_downtime_list and machine_downtime_list[0]['total_faults'] > 0:
+        most_affected_machine = machine_downtime_list[0]['machine']
+    else:
+        most_affected_machine = "None"
+
+    # Overall avg resolution time
+    overall_avg_res_sec = int(total_resolved_downtime_sec / total_resolved_count) if total_resolved_count > 0 else 0
+
+    return {
+        'total_downtime_seconds': total_downtime_sec,
+        'formatted_total_downtime': format_duration(timedelta(seconds=total_downtime_sec)),
+        'avg_resolution_seconds': overall_avg_res_sec,
+        'formatted_avg_resolution': format_duration(timedelta(seconds=overall_avg_res_sec)),
+        'active_incidents': active_incidents_count,
+        'most_affected_machine': most_affected_machine,
+        'critical_incidents': critical_incidents_count,
+        'machine_downtime_list': machine_downtime_list,
+        'critical_active_faults': critical_active_faults,
     }
 
 

@@ -177,13 +177,16 @@ def dashboard_fault_detail(request, pk):
             messages.error(request, e.message)
             return redirect('dashboard_fault_detail', pk=fault.id)
 
+    from .services import calculate_fault_downtime
     available_technicians = get_available_technicians()
     timeline = fault.history.all().order_by('timestamp', 'id')
+    downtime_info = calculate_fault_downtime(fault)
 
     context = {
         'fault': fault,
         'available_technicians': available_technicians,
         'timeline': timeline,
+        'downtime_info': downtime_info,
     }
     return render(request, 'ussd/dashboard_fault_detail.html', context)
 
