@@ -1,0 +1,66 @@
+{% extends 'ussd/dashboard_base.html' %}
+
+{% block title %}FactoryPulse - Machines{% endblock %}
+{% block page_title %}Machine Management{% endblock %}
+
+{% block content %}
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: var(--text-muted);">Manage factory machines monitored by the system.</span>
+        <a href="{% url 'dashboard_machine_add' %}" class="btn btn-primary">+ Add Machine</a>
+    </div>
+
+    <!-- Message Alerts -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="panel" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; padding: 1rem; margin-bottom: 1.5rem; border-radius: 6px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Machines List Panel -->
+    <div class="panel">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Machine Name</th>
+                        <th>Status</th>
+                        <th>Number of Faults</th>
+                        <th>Last Fault</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in machines_data %}
+                    <tr>
+                        <td><strong>{{ m.name }}</strong></td>
+                        <td>
+                            <span class="badge {{ m.status|lower }}">
+                                {{ m.status_display }}
+                            </span>
+                        </td>
+                        <td>{{ m.fault_count }} fault{{ m.fault_count|pluralize }}</td>
+                        <td>
+                            {% if m.last_fault_time %}
+                                {{ m.last_fault_time|timesince }} ago
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">No faults reported</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'dashboard_machine_edit' m.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Edit</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                            No machines added to the system yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -1,6 +1,22 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from .views import ussd_callback
+from . import dashboard_views
 
 urlpatterns = [
-    path('', ussd_callback, name='ussd_callback'),
+    # Root redirect
+    path('', RedirectView.as_view(url='/dashboard/', permanent=False), name='root_redirect'),
+
+    # USSD callback
+    path('ussd/', ussd_callback, name='ussd_callback'),
+
+    # Supervisor Dashboard
+    path('dashboard/', dashboard_views.dashboard_home, name='dashboard_home'),
+    path('dashboard/faults/', dashboard_views.dashboard_faults, name='dashboard_faults'),
+    path('dashboard/faults/<int:pk>/', dashboard_views.dashboard_fault_detail, name='dashboard_fault_detail'),
+    path('dashboard/machines/', dashboard_views.dashboard_machines, name='dashboard_machines'),
+    path('dashboard/machines/add/', dashboard_views.dashboard_machine_add, name='dashboard_machine_add'),
+    path('dashboard/machines/<int:pk>/edit/', dashboard_views.dashboard_machine_edit, name='dashboard_machine_edit'),
 ]
+
+

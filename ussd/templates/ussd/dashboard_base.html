@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FactoryPulse Dashboard{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="{% static 'ussd/dashboard.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>🏭 FactoryPulse</h1>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="{% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
+                <a href="{% url 'dashboard_home' %}">Dashboard</a>
+            </li>
+            <li class="{% if 'fault' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'dashboard_faults' %}">Faults</a>
+            </li>
+            <li class="{% if 'machine' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'dashboard_machines' %}">Machines</a>
+            </li>
+            <li>
+                <a href="{% url 'admin:index' %}" target="_blank">Admin ↗</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            FactoryPulse v1.0
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <header class="top-bar">
+            <div class="page-title">
+                <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+            </div>
+            <div class="user-profile">
+                <span>👤 {{ request.user.username }}</span>
+                <a href="{% url 'admin:logout' %}?next={% url 'dashboard_home' %}" class="btn-logout">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-body">
+            {% block content %}{% endblock %}
+        </section>
+    </main>
+
+</body>
+</html>

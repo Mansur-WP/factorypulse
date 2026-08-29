@@ -1,0 +1,156 @@
+{% extends 'ussd/dashboard_base.html' %}
+
+{% block title %}FactoryPulse - Fault #{{ fault.id }}{% endblock %}
+{% block page_title %}Fault #{{ fault.id }}{% endblock %}
+
+{% block content %}
+    <div style="margin-bottom: 1.5rem;">
+        <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary">&larr; Back to List</a>
+    </div>
+
+    <!-- Message Alerts -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="panel" style="background-color: {% if message.tags == 'error' %}#fee2e2; color: #991b1b; border: 1px solid #fca5a5;{% else %}#d1fae5; color: #065f46; border: 1px solid #6ee7b7;{% endif %} padding: 1rem; margin-bottom: 1.5rem; border-radius: 6px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="detail-grid">
+        
+        <!-- Left: Fault Details -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Fault Details</h3>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-row">
+                    <span class="detail-label">Fault ID</span>
+                    <span class="detail-value">#{{ fault.id }}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Machine</span>
+                    <span class="detail-value"><strong>{{ fault.machine }}</strong></span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Problem</span>
+                    <span class="detail-value desc">{{ fault.problem }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Severity</span>
+                    <span class="detail-value">
+                        <span class="badge {{ fault.severity|lower }}">
+                            {{ fault.severity }}
+                        </span>
+                    </span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Current Status</span>
+                    <span class="detail-value">
+                        <span class="badge {{ fault.status|lower }}">
+                            {{ fault.get_status_display }}
+                        </span>
+                    </span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Reporter Information</span>
+                    <span class="detail-value">
+                        {% if fault.phone_number %}
+                            Phone: {{ fault.phone_number }}
+                        {% endif %}
+                        {% if fault.telegram_user_id %}
+                            {% if fault.phone_number %}<br>{% endif %}
+                            Telegram ID: {{ fault.telegram_user_id }}
+                            {% if fault.telegram_username %}
+                                (@{{ fault.telegram_username }})
+                            {% endif %}
+                        {% endif %}
+                        {% if not fault.phone_number and not fault.telegram_user_id %}
+                            Unknown Reporter
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Reported At</span>
+                    <span class="detail-value">{{ fault.created_at|date:"F d, Y H:i" }} ({{ fault.created_at|timesince }} ago)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Actions & Workflow -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Workflow Actions</h3>
+            </div>
+            
+            <div class="actions-panel">
+                {% if fault.status == 'OPEN' %}
+                    <form method="post" class="action-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="ASSIGNED">
+                        <p class="action-description">
+                            Assign this new fault report to a maintenance technician to begin review.
+                        </p>
+                        <button type="submit" class="btn btn-primary">Assign Task</button>
+                    </form>
+                
+                {% elif fault.status == 'ASSIGNED' %}
+                    <form method="post" class="action-form" style="margin-bottom: 1.5rem;">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="IN_PROGRESS">
+                        <p class="action-description">
+                            Start work on this fault report. This updates its status to "In Progress".
+                        </p>
+                        <button type="submit" class="btn btn-primary">Start Work</button>
+                    </form>
+
+                    <form method="post" class="action-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="OPEN">
+                        <p class="action-description">
+                            Revert the status back to Open.
+                        </p>
+                        <button type="submit" class="btn btn-secondary">Revert to Open</button>
+                    </form>
+
+                {% elif fault.status == 'IN_PROGRESS' %}
+                    <form method="post" class="action-form" style="margin-bottom: 1.5rem;">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="RESOLVED">
+                        <p class="action-description">
+                            Verify that the fault has been successfully fixed and mark it as Resolved.
+                        </p>
+                        <button type="submit" class="btn btn-primary">Mark Resolved</button>
+                    </form>
+
+                    <form method="post" class="action-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="OPEN">
+                        <p class="action-description">
+                            Stop current progress and revert the status back to Open.
+                        </p>
+                        <button type="submit" class="btn btn-secondary">Revert to Open</button>
+                    </form>
+
+                {% elif fault.status == 'RESOLVED' %}
+                    <div style="text-align: center; padding: 1rem 0;">
+                        <span style="font-size: 3rem;">✅</span>
+                        <h4 style="margin-top: 0.5rem; font-weight: 600;">Resolved</h4>
+                        <p class="action-description" style="margin-top: 0.5rem;">
+                            This fault report has been successfully resolved. No further actions are required.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+{% endblock %}

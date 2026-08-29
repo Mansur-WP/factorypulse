@@ -1,0 +1,101 @@
+{% extends 'ussd/dashboard_base.html' %}
+
+{% block title %}FactoryPulse - Faults{% endblock %}
+{% block page_title %}Fault Reports{% endblock %}
+
+{% block content %}
+    <!-- Filter Bar -->
+    <form method="get" class="filter-bar">
+        <div class="form-group">
+            <label for="search">Search</label>
+            <input type="text" name="q" id="search" placeholder="Machine, problem, reporter..." value="{{ q_search }}" class="form-control">
+        </div>
+        
+        <div class="form-group">
+            <label for="severity">Severity</label>
+            <select name="severity" id="severity" class="form-control">
+                <option value="">All Severities</option>
+                <option value="Low" {% if current_severity == 'Low' %}selected{% endif %}>Low</option>
+                <option value="Medium" {% if current_severity == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="High" {% if current_severity == 'High' %}selected{% endif %}>High</option>
+                <option value="Critical" {% if current_severity == 'Critical' %}selected{% endif %}>Critical</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select name="status" id="status" class="form-control">
+                <option value="">All Statuses</option>
+                <option value="OPEN" {% if current_status == 'OPEN' %}selected{% endif %}>Open</option>
+                <option value="ASSIGNED" {% if current_status == 'ASSIGNED' %}selected{% endif %}>Assigned</option>
+                <option value="IN_PROGRESS" {% if current_status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+                <option value="RESOLVED" {% if current_status == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary">Clear</a>
+        </div>
+    </form>
+
+    <!-- Faults Table Panel -->
+    <div class="panel">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Machine</th>
+                        <th>Problem</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Reporter</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fault in faults %}
+                    <tr>
+                        <td>#{{ fault.id }}</td>
+                        <td><strong>{{ fault.machine }}</strong></td>
+                        <td>{{ fault.problem }}</td>
+                        <td>
+                            <span class="badge {{ fault.severity|lower }}">
+                                {{ fault.severity }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {{ fault.status|lower }}">
+                                {{ fault.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if fault.phone_number %}
+                                {{ fault.phone_number }}
+                            {% elif fault.telegram_username %}
+                                @{{ fault.telegram_username }} (TG)
+                            {% elif fault.telegram_user_id %}
+                                ID: {{ fault.telegram_user_id }} (TG)
+                            {% else %}
+                                --
+                            {% endif %}
+                        </td>
+                        <td>{{ fault.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <a href="{% url 'dashboard_fault_detail' fault.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">View</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                            No fault reports match your criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

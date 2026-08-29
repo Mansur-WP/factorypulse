@@ -2,25 +2,8 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from .models import FaultReport
+from .services import MACHINES, PROBLEMS, SEVERITIES, create_fault_report
 
-MACHINES = {
-    '1': 'Generator',
-    '2': 'Packaging Machine',
-    '3': 'Milling Machine',
-}
-
-PROBLEMS = {
-    '1': 'Not working',
-    '2': 'Overheating',
-    '3': 'Making noise',
-}
-
-SEVERITIES = {
-    '1': 'Low',
-    '2': 'Medium',
-    '3': 'High',
-    '4': 'Critical',
-}
 
 
 @csrf_exempt
@@ -102,7 +85,7 @@ def ussd_callback(request):
 
             elif step == 'CONFIRMATION':
                 if token == '1':
-                    fault = FaultReport.objects.create(
+                    fault = create_fault_report(
                         phone_number=phone_number,
                         machine=machine,
                         problem=problem,

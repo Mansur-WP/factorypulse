@@ -1,0 +1,108 @@
+{% extends 'ussd/dashboard_base.html' %}
+{% load static %}
+
+{% block title %}FactoryPulse - Supervisor Dashboard{% endblock %}
+{% block page_title %}Dashboard Home{% endblock %}
+
+{% block content %}
+    <!-- Summary Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card total">
+            <div class="stat-label">Total Faults</div>
+            <div class="stat-value">{{ stats.total_faults }}</div>
+        </div>
+        <div class="stat-card open">
+            <div class="stat-label">Open Faults</div>
+            <div class="stat-value">{{ stats.open_faults }}</div>
+        </div>
+        <div class="stat-card critical">
+            <div class="stat-label">Critical Faults</div>
+            <div class="stat-value">{{ stats.critical_faults }}</div>
+        </div>
+        <div class="stat-card resolved">
+            <div class="stat-label">Resolved Faults</div>
+            <div class="stat-value">{{ stats.resolved_faults }}</div>
+        </div>
+    </div>
+
+    <!-- Dashboard Panels Layout -->
+    <div class="dashboard-panels">
+        
+        <!-- Left Panel: Recent Faults -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Recent Faults</h3>
+                <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">View All</a>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fault ID</th>
+                            <th>Machine</th>
+                            <th>Problem</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Reported</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fault in recent_faults %}
+                        <tr>
+                            <td>#{{ fault.id }}</td>
+                            <td><strong>{{ fault.machine }}</strong></td>
+                            <td>{{ fault.problem }}</td>
+                            <td>
+                                <span class="badge {{ fault.severity|lower }}">
+                                    {{ fault.severity }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {{ fault.status|lower }}">
+                                    {{ fault.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ fault.created_at|timesince }} ago</td>
+                            <td>
+                                <a href="{% url 'dashboard_fault_detail' fault.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">View</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No faults reported yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right Panel: Recent Activity -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Recent Activity</h3>
+            </div>
+            <ul class="activity-feed">
+                {% for act in recent_activity %}
+                <li class="activity-item">
+                    <span class="activity-time">{{ act.time|time:"H:i" }}</span>
+                    <div class="activity-content">
+                        <div class="activity-msg">{{ act.message }}</div>
+                        <div class="activity-sub">
+                            {{ act.machine }} {% if act.detail %}({{ act.detail }}){% endif %}
+                        </div>
+                    </div>
+                </li>
+                {% empty %}
+                <li style="color: var(--text-muted); padding: 1rem 0; text-align: center;">
+                    No recent activity.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+    </div>
+{% endblock %}
