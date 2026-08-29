@@ -3,9 +3,9 @@ Tests for the FactoryPulse shared services layer (ussd/services.py).
 """
 
 from django.test import TestCase
-from ussd.models import FaultReport
+from ussd.models import FaultReport, Machine
 from ussd.services import (
-    MACHINES, PROBLEMS, SEVERITIES,
+    get_ussd_machine_list, PROBLEMS, SEVERITIES,
     resolve_machine, resolve_problem, resolve_severity,
     create_fault_report, get_user_fault_reports, get_machine_statuses,
 )
@@ -13,6 +13,12 @@ from ussd.services import (
 
 class ResolveHelperTests(TestCase):
     """Tests for input resolution helper functions."""
+
+    def setUp(self):
+        """Seed machines in the test database for dynamic resolution."""
+        Machine.objects.get_or_create(name='Generator')
+        Machine.objects.get_or_create(name='Packaging Machine')
+        Machine.objects.get_or_create(name='Milling Machine')
 
     # ── resolve_machine ───────────────────────────────────────────────────
 

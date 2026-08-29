@@ -15,11 +15,8 @@ from .models import FaultReport, Machine, Technician, FaultStatusHistory
 
 User = get_user_model()
 
-MACHINES: Dict[str, str] = {
-    '1': 'Generator',
-    '2': 'Packaging Machine',
-    '3': 'Milling Machine',
-}
+# Default seed machines — used only if the Machine table is empty
+_DEFAULT_MACHINE_NAMES = ['Generator', 'Packaging Machine', 'Milling Machine']
 
 PROBLEMS: Dict[str, str] = {
     '1': 'Not working',
@@ -34,21 +31,41 @@ SEVERITIES: Dict[str, str] = {
     '4': 'Critical',
 }
 
-MACHINE_STATUSES: List[Dict[str, str]] = [
-    {'id': '1', 'name': 'Generator', 'status': 'Operational'},
-    {'id': '2', 'name': 'Packaging Machine', 'status': 'Operational'},
-    {'id': '3', 'name': 'Milling Machine', 'status': 'Operational'},
-]
+
+def get_ussd_machine_list() -> Dict[str, str]:
+    """
+    Returns a numbered dict of machines from the database for USSD menus.
+    E.g. {'1': 'Generator', '2': 'Packaging Machine', '3': 'Milling Machine', ...}
+    Seeds default machines if the table is empty.
+    """
+    try:
+        machines = Machine.objects.all().order_by('id')
+        if not machines.exists():
+            for name in _DEFAULT_MACHINE_NAMES:
+                Machine.objects.get_or_create(name=name)
+            machines = Machine.objects.all().order_by('id')
+        return {str(i + 1): m.name for i, m in enumerate(machines)}
+    except Exception:
+        # Fallback if DB is unreachable
+        return {str(i + 1): name for i, name in enumerate(_DEFAULT_MACHINE_NAMES)}
+
+
+# Backward-compatible alias — modules that import MACHINES get the dynamic list
+# Note: This is a function call, not a constant. Importers that need live data
+# should call get_ussd_machine_list() directly.
+MACHINES = get_ussd_machine_list
 
 
 def resolve_machine(input_text: str) -> Optional[str]:
     """
     Resolves machine input from digit ('1'), button label ('1. Generator'), or raw name ('Generator').
+    Dynamically queries the Machine table.
     """
+    machines = get_ussd_machine_list()
     clean = (input_text or '').strip()
-    if clean in MACHINES:
-        return MACHINES[clean]
-    for key, name in MACHINES.items():
+    if clean in machines:
+        return machines[clean]
+    for key, name in machines.items():
         if clean.lower() == name.lower() or clean.lower() == f"{key}. {name}".lower() or clean.lower() == f"{key} {name}".lower():
             return name
     return None
@@ -136,7 +153,7 @@ def get_machine_statuses() -> List[Dict[str, str]]:
     try:
         machines = Machine.objects.all()
         if not machines.exists():
-            for name in ['Generator', 'Packaging Machine', 'Milling Machine']:
+            for name in _DEFAULT_MACHINE_NAMES:
                 Machine.objects.get_or_create(name=name)
             machines = Machine.objects.all()
         return [
@@ -148,7 +165,10 @@ def get_machine_statuses() -> List[Dict[str, str]]:
             for m in machines
         ]
     except Exception:
-        return list(MACHINE_STATUSES)
+        return [
+            {'id': str(i + 1), 'name': name, 'status': 'Operational'}
+            for i, name in enumerate(_DEFAULT_MACHINE_NAMES)
+        ]
 
 
 def get_available_technicians() -> QuerySet:

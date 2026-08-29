@@ -23,7 +23,7 @@ from telegram.ext import (
 )
 
 from .services import (
-    MACHINES,
+    get_ussd_machine_list,
     PROBLEMS,
     SEVERITIES,
     resolve_machine,
@@ -55,7 +55,8 @@ def main_menu_keyboard():
 
 
 def machine_keyboard():
-    rows = [[f"{key}. {name}"] for key, name in MACHINES.items()]
+    machines = get_ussd_machine_list()
+    rows = [[f"{key}. {name}"] for key, name in machines.items()]
     rows.append(['Cancel'])
     return ReplyKeyboardMarkup(rows, one_time_keyboard=True, resize_keyboard=True)
 
