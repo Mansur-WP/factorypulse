@@ -1,17 +1,21 @@
 {% extends 'ussd/dashboard_base.html' %}
 
 {% block title %}FactoryPulse - Fault #{{ fault.id }}{% endblock %}
-{% block page_title %}Fault #{{ fault.id }}{% endblock %}
+{% block page_title %}Fault Incident #{{ fault.id }}{% endblock %}
 
 {% block content %}
-    <div style="margin-bottom: 1.5rem;">
-        <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary">&larr; Back to List</a>
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary">&larr; Back to Fault Reports</a>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge {{ fault.severity|lower }}">{{ fault.severity }} Severity</span>
+            <span class="badge {{ fault.status|lower }}">{{ fault.get_status_display }}</span>
+        </div>
     </div>
 
     <!-- Message Alerts -->
     {% if messages %}
         {% for message in messages %}
-            <div class="panel" style="background-color: {% if message.tags == 'error' %}#fee2e2; color: #991b1b; border: 1px solid #fca5a5;{% else %}#d1fae5; color: #065f46; border: 1px solid #6ee7b7;{% endif %} padding: 1rem; margin-bottom: 1.5rem; border-radius: 6px;">
+            <div style="background-color: {% if message.tags == 'error' %}#fef2f2; color: #b91c1c; border: 1px solid #fecaca;{% else %}#ecfdf5; color: #047857; border: 1px solid #a7f3d0;{% endif %} padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
                 {{ message }}
             </div>
         {% endfor %}
@@ -19,279 +23,282 @@
 
     <div class="detail-grid">
         
-        <!-- Left: Fault Details -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Fault Details</h3>
-            </div>
+        <!-- Left: Fault Details & Visual Lifecycle -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             
-            <div class="detail-section">
-                <div class="detail-row">
-                    <span class="detail-label">Fault ID</span>
-                    <span class="detail-value">#{{ fault.id }}</span>
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Incident Details & Breakdown Context</h3>
                 </div>
                 
-                <div class="detail-row">
-                    <span class="detail-label">Machine</span>
-                    <span class="detail-value"><strong>{{ fault.machine }}</strong></span>
-                </div>
+                <div class="detail-section">
+                    <div class="detail-row">
+                        <span class="detail-label">Fault Reference</span>
+                        <span class="detail-value">#{{ fault.id }}</span>
+                    </div>
+                    
+                    <div class="detail-row">
+                        <span class="detail-label">Machine Asset</span>
+                        <span class="detail-value"><strong>{{ fault.machine }}</strong></span>
+                    </div>
 
-                <div class="detail-row">
-                    <span class="detail-label">Problem</span>
-                    <span class="detail-value desc">{{ fault.problem }}</span>
-                </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Problem Summary</span>
+                        <span class="detail-value desc">{{ fault.problem }}</span>
+                    </div>
 
-                <div class="detail-row">
-                    <span class="detail-label">Severity</span>
-                    <span class="detail-value">
-                        <span class="badge {{ fault.severity|lower }}">
-                            {{ fault.severity }}
+                    <div class="detail-row">
+                        <span class="detail-label">Severity Level</span>
+                        <span class="detail-value">
+                            <span class="badge {{ fault.severity|lower }}">{{ fault.severity }}</span>
                         </span>
-                    </span>
-                </div>
+                    </div>
 
-                <div class="detail-row">
-                    <span class="detail-label">Current Status</span>
-                    <span class="detail-value">
-                        <span class="badge {{ fault.status|lower }}">
-                            {{ fault.get_status_display }}
+                    <div class="detail-row">
+                        <span class="detail-label">Current Status</span>
+                        <span class="detail-value">
+                            <span class="badge {{ fault.status|lower }}">{{ fault.get_status_display }}</span>
                         </span>
-                    </span>
-                </div>
+                    </div>
 
-                <div class="detail-row">
-                    <span class="detail-label">Assigned Technician</span>
-                    <span class="detail-value">
-                        {% if fault.assigned_to %}
-                            {% if fault.assigned_to.technician_profile %}
-                                <strong>{{ fault.assigned_to.technician_profile.name }}</strong>
-                                {% if fault.assigned_to.technician_profile.phone_number %}
-                                    <span style="color: var(--text-muted); font-size: 0.9rem;">({{ fault.assigned_to.technician_profile.phone_number }})</span>
+                    <div class="detail-row">
+                        <span class="detail-label">Assigned Technician</span>
+                        <span class="detail-value">
+                            {% if fault.assigned_to %}
+                                {% if fault.assigned_to.technician_profile %}
+                                    <strong>👤 {{ fault.assigned_to.technician_profile.name }}</strong>
+                                    {% if fault.assigned_to.technician_profile.phone_number %}
+                                        <span style="color: var(--text-muted); font-size: 0.85rem;">({{ fault.assigned_to.technician_profile.phone_number }})</span>
+                                    {% endif %}
+                                {% else %}
+                                    <strong>👤 {{ fault.assigned_to.get_full_name|default:fault.assigned_to.username }}</strong>
                                 {% endif %}
                             {% else %}
-                                <strong>{{ fault.assigned_to.get_full_name|default:fault.assigned_to.username }}</strong>
+                                <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
                             {% endif %}
-                        {% else %}
-                            <span style="color: var(--text-muted); font-style: italic;">Unassigned</span>
-                        {% endif %}
-                    </span>
-                </div>
+                        </span>
+                    </div>
 
-                {% if fault.assignment_notes %}
-                <div class="detail-row">
-                    <span class="detail-label">Assignment Notes</span>
-                    <span class="detail-value desc">{{ fault.assignment_notes }}</span>
-                </div>
-                {% endif %}
+                    {% if fault.assignment_notes %}
+                    <div class="detail-row">
+                        <span class="detail-label">Assignment Notes</span>
+                        <span class="detail-value desc" style="font-size: 0.875rem; color: #334155;">{{ fault.assignment_notes }}</span>
+                    </div>
+                    {% endif %}
 
-                <div class="detail-row">
-                    <span class="detail-label">Reporter Information</span>
-                    <span class="detail-value">
-                        {% if fault.phone_number %}
-                            Phone: {{ fault.phone_number }}
-                        {% endif %}
-                        {% if fault.telegram_user_id %}
-                            {% if fault.phone_number %}<br>{% endif %}
-                            Telegram ID: {{ fault.telegram_user_id }}
+                    <div class="detail-row">
+                        <span class="detail-label">Reporter Contact</span>
+                        <span class="detail-value">
+                            {% if fault.phone_number %}
+                                📞 {{ fault.phone_number }}
+                            {% endif %}
                             {% if fault.telegram_username %}
-                                (@{{ fault.telegram_username }})
+                                ✈️ @{{ fault.telegram_username }} (Telegram)
                             {% endif %}
-                        {% endif %}
-                        {% if not fault.phone_number and not fault.telegram_user_id %}
-                            Unknown Reporter
-                        {% endif %}
-                    </span>
-                </div>
+                            {% if fault.telegram_user_id and not fault.telegram_username %}
+                                ✈️ ID: {{ fault.telegram_user_id }} (Telegram)
+                            {% endif %}
+                            {% if not fault.phone_number and not fault.telegram_user_id %}
+                                <span style="color: var(--text-muted);">Unknown Reporter</span>
+                            {% endif %}
+                        </span>
+                    </div>
 
-                <div class="detail-row">
-                    <span class="detail-label">Reported At</span>
-                    <span class="detail-value">{{ downtime_info.open_time|date:"F d, Y H:i" }} ({{ downtime_info.open_time|timesince }} ago)</span>
-                </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Reported At</span>
+                        <span class="detail-value">{{ downtime_info.open_time|date:"F d, Y H:i" }} ({{ downtime_info.open_time|timesince }} ago)</span>
+                    </div>
 
-                {% if downtime_info.is_resolved %}
-                <div class="detail-row">
-                    <span class="detail-label">Resolved At</span>
-                    <span class="detail-value" style="color: #065f46; font-weight: 600;">
-                        {{ downtime_info.resolved_time|date:"F d, Y H:i" }}
-                    </span>
+                    {% if downtime_info.is_resolved %}
+                    <div class="detail-row">
+                        <span class="detail-label">Resolved At</span>
+                        <span class="detail-value" style="color: #047857; font-weight: 600;">
+                            {{ downtime_info.resolved_time|date:"F d, Y H:i" }}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Total Downtime</span>
+                        <span class="detail-value" style="font-weight: 700; color: #0f172a;">
+                            ⏱️ {{ downtime_info.formatted_duration }}
+                        </span>
+                    </div>
+                    {% else %}
+                    <div class="detail-row">
+                        <span class="detail-label">Current Downtime</span>
+                        <span class="detail-value" style="font-weight: 700; color: #dc2626;">
+                            ⏱️ {{ downtime_info.formatted_duration }} (Active)
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">Total Downtime</span>
-                    <span class="detail-value" style="font-weight: 700; color: #1e293b;">
-                        ⏱️ {{ downtime_info.formatted_duration }}
-                    </span>
-                </div>
-                {% else %}
-                <div class="detail-row">
-                    <span class="detail-label">Current Downtime</span>
-                    <span class="detail-value" style="font-weight: 700; color: #dc2626;">
-                        ⏱️ {{ downtime_info.formatted_duration }} (Active)
-                    </span>
-                </div>
-                {% endif %}
             </div>
 
-            <!-- Lifecycle Timeline -->
-            <div style="margin-top: 2rem; border-top: 2px solid var(--border-color); padding-top: 1.5rem;">
-                <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main);">
-                    ⏱️ Fault Lifecycle Timeline
-                </h4>
-                <div class="timeline-list" style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Fault Lifecycle Audit Flow -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>⏱️ Fault Lifecycle Timeline History</h3>
+                </div>
+                <div class="activity-feed">
                     {% for entry in timeline %}
-                    <div class="timeline-entry" style="display: flex; gap: 0.85rem; align-items: flex-start;">
-                        <div style="flex-shrink: 0; min-width: 65px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-top: 0.2rem;">
-                            {{ entry.timestamp|date:"H:i" }}
-                        </div>
-                        <div style="flex-grow: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.65rem 0.85rem;">
+                    <div class="activity-item">
+                        <span class="activity-time">{{ entry.timestamp|date:"H:i" }}</span>
+                        <div class="activity-content">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
                                 <span class="badge {{ entry.status|lower }}">{{ entry.get_status_display }}</span>
                                 <span style="font-size: 0.75rem; color: var(--text-muted);">{{ entry.timestamp|date:"M d, Y" }}</span>
                             </div>
-                            <div style="font-size: 0.875rem; font-weight: 600; color: #1e293b;">
-                                {% if entry.notes %}{{ entry.notes }}{% else %}Status set to {{ entry.get_status_display }}{% endif %}
+                            <div style="font-size: 0.875rem; font-weight: 600; color: #0f172a;">
+                                {% if entry.notes %}{{ entry.notes }}{% else %}Status transitioned to {{ entry.get_status_display }}{% endif %}
                             </div>
                             {% if entry.actor_name %}
                             <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.15rem;">
-                                By: <strong>{{ entry.actor_name }}</strong>
+                                Recorded by: <strong>{{ entry.actor_name }}</strong>
                             </div>
                             {% endif %}
                         </div>
                     </div>
                     {% empty %}
-                    <div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
-                        No lifecycle history recorded.
+                    <div class="empty-state">
+                        <div class="empty-state-title">No Timeline Records</div>
+                        <div class="empty-state-desc">Audit history will log automatically as status transitions occur.</div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
+
         </div>
 
         <!-- Right: Actions & Workflow -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Workflow Actions</h3>
-            </div>
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             
-            <div class="actions-panel">
-                {% if fault.status == 'OPEN' %}
-                    <form method="post" class="action-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="assign">
-                        
-                        <p class="action-description">
-                            Assign this fault to a maintenance technician to begin review.
-                        </p>
-
-                        <div class="form-group" style="margin-top: 0.5rem;">
-                            <label for="technician_id">Select Technician</label>
-                            <select name="technician_id" id="technician_id" required class="form-control" style="width: 100%;">
-                                <option value="">-- Choose Technician --</option>
-                                {% for tech in available_technicians %}
-                                    <option value="{{ tech.user.id }}">
-                                        {{ tech.name }} {% if tech.phone_number %}({{ tech.phone_number }}){% endif %}
-                                    </option>
-                                {% empty %}
-                                    <option value="" disabled>No technicians registered</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="margin-top: 0.5rem;">
-                            <label for="notes">Assignment Notes (Optional)</label>
-                            <textarea name="notes" id="notes" rows="3" placeholder="Add optional instructions or details for the technician..." class="form-control" style="width: 100%; resize: vertical;"></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">Assign Task</button>
-                    </form>
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Technician Assignment & Actions</h3>
+                </div>
                 
-                {% elif fault.status == 'ASSIGNED' %}
-                    <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.85rem; margin-bottom: 1.25rem;">
-                        <span style="font-size: 0.8rem; font-weight: 600; color: #1e40af; text-transform: uppercase;">Assigned Technician:</span>
-                        <div style="font-size: 1rem; font-weight: 600; color: #1e3a8a; margin-top: 0.25rem;">
-                            👤 {{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}
+                <div class="actions-panel">
+                    {% if fault.status == 'OPEN' %}
+                        <form method="post" style="display: flex; flex-direction: column; gap: 1rem;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign">
+                            
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">
+                                Assign this fault to a qualified technician to initiate SMS assignment notification.
+                            </p>
+
+                            <div class="form-group">
+                                <label for="technician_id">Select Technician</label>
+                                <select name="technician_id" id="technician_id" required class="form-control" style="width: 100%;">
+                                    <option value="">-- Choose Technician --</option>
+                                    {% for tech in available_technicians %}
+                                        <option value="{{ tech.user.id }}">
+                                            {{ tech.name }} {% if tech.phone_number %}({{ tech.phone_number }}){% endif %}
+                                        </option>
+                                    {% empty %}
+                                        <option value="" disabled>No registered technicians available</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="notes">Assignment Instructions / Notes</label>
+                                <textarea name="notes" id="notes" rows="3" placeholder="Add specific task instructions..." class="form-control" style="resize: vertical;"></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.65rem;">
+                                Assign & Send SMS Notification
+                            </button>
+                        </form>
+                    {% else %}
+                        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                            <div style="font-size: 0.775rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Assigned Technician</div>
+                            <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-top: 0.2rem;">
+                                👤 {{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}
+                            </div>
+                            {% if fault.assigned_to.technician_profile.phone_number %}
+                            <div style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.1rem;">
+                                📞 {{ fault.assigned_to.technician_profile.phone_number }}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- Reassign Form -->
+                        <form method="post" style="display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-bottom: 1.5rem;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign">
+                            <div class="form-group">
+                                <label for="reassign_tech_id">Reassign Technician</label>
+                                <select name="technician_id" id="reassign_tech_id" required class="form-control">
+                                    <option value="">-- Select New Technician --</option>
+                                    {% for tech in available_technicians %}
+                                        <option value="{{ tech.user.id }}" {% if fault.assigned_to.id == tech.user.id %}selected{% endif %}>
+                                            {{ tech.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-secondary" style="font-size: 0.8rem;">
+                                Reassign Technician
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    <!-- Status Workflow Transition Panel -->
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                        <h4 style="font-size: 0.875rem; font-weight: 700; uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">
+                            Status Transitions
+                        </h4>
+
+                        {% if fault.status != 'RESOLVED' %}
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                {% if fault.status == 'ASSIGNED' %}
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="ACCEPTED">
+                                        <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: flex-start;">
+                                            <span>✓</span> Mark Accepted
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                {% if fault.status == 'ASSIGNED' or fault.status == 'ACCEPTED' %}
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="IN_PROGRESS">
+                                        <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; color: #b45309;">
+                                            <span>▶</span> Start Work (In Progress)
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                {% if fault.status != 'OPEN' %}
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="RESOLVED">
+                                        <button type="submit" class="btn btn-primary" style="width: 100%; background-color: #047857;">
+                                            <span>✓</span> Mark Resolved
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="OPEN">
+                                    <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; color: #dc2626;">
+                                        <span>↩</span> Reopen Fault
+                                    </button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1rem; text-align: center;">
+                                <div style="color: #047857; font-weight: 700; font-size: 1rem;">✓ Incident Resolved</div>
+                                <div style="font-size: 0.775rem; color: #065f46; margin-top: 0.25rem;">This breakdown has been marked as fully resolved.</div>
+                            </div>
+                        {% endif %}
                     </div>
-
-                    <form method="post" class="action-form" style="margin-bottom: 1.25rem;">
-                        {% csrf_token %}
-                        <input type="hidden" name="status" value="IN_PROGRESS">
-                        <p class="action-description">
-                            Start work on this fault report. This updates its status to "In Progress".
-                        </p>
-                        <button type="submit" class="btn btn-primary">Start Work</button>
-                    </form>
-
-                    <form method="post" class="action-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="status" value="OPEN">
-                        <p class="action-description">
-                            Revert the status back to Open.
-                        </p>
-                        <button type="submit" class="btn btn-secondary">Revert to Open</button>
-                    </form>
-
-                {% elif fault.status == 'ACCEPTED' %}
-                    <div style="background-color: #e0e7ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 0.85rem; margin-bottom: 1.25rem;">
-                        <span style="font-size: 0.8rem; font-weight: 600; color: #3730a3; text-transform: uppercase;">Task Accepted By:</span>
-                        <div style="font-size: 1rem; font-weight: 600; color: #312e81; margin-top: 0.25rem;">
-                            👤 {{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}
-                        </div>
-                    </div>
-
-                    <form method="post" class="action-form" style="margin-bottom: 1.25rem;">
-                        {% csrf_token %}
-                        <input type="hidden" name="status" value="IN_PROGRESS">
-                        <p class="action-description">
-                            Technician has accepted the task via SMS. Click to mark as "In Progress".
-                        </p>
-                        <button type="submit" class="btn btn-primary">Start Work</button>
-                    </form>
-
-                    <form method="post" class="action-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="status" value="OPEN">
-                        <p class="action-description">
-                            Revert the status back to Open.
-                        </p>
-                        <button type="submit" class="btn btn-secondary">Revert to Open</button>
-                    </form>
-
-                {% elif fault.status == 'IN_PROGRESS' %}
-                    <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 0.85rem; margin-bottom: 1.25rem;">
-                        <span style="font-size: 0.8rem; font-weight: 600; color: #92400e; text-transform: uppercase;">In Progress with:</span>
-                        <div style="font-size: 1rem; font-weight: 600; color: #78350f; margin-top: 0.25rem;">
-                            🔧 {{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}
-                        </div>
-                    </div>
-
-                    <form method="post" class="action-form" style="margin-bottom: 1.25rem;">
-                        {% csrf_token %}
-                        <input type="hidden" name="status" value="RESOLVED">
-                        <p class="action-description">
-                            Verify that the fault has been successfully fixed and mark it as Resolved.
-                        </p>
-                        <button type="submit" class="btn btn-primary">Mark Resolved</button>
-                    </form>
-
-                    <form method="post" class="action-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="status" value="OPEN">
-                        <p class="action-description">
-                            Stop current progress and revert the status back to Open.
-                        </p>
-                        <button type="submit" class="btn btn-secondary">Revert to Open</button>
-                    </form>
-
-                {% elif fault.status == 'RESOLVED' %}
-                    <div style="text-align: center; padding: 1rem 0;">
-                        <span style="font-size: 3rem;">✅</span>
-                        <h4 style="margin-top: 0.5rem; font-weight: 600;">Resolved</h4>
-                        <p class="action-description" style="margin-top: 0.5rem;">
-                            This fault report was resolved{% if fault.assigned_to %} by <strong>{{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}</strong>{% endif %}.
-                        </p>
-                    </div>
-                {% endif %}
+                </div>
             </div>
+
         </div>
 
     </div>

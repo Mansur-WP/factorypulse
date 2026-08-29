@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}FactoryPulse Dashboard{% endblock %}</title>
-    <!-- Google Fonts -->
+    <title>{% block title %}FactoryPulse - Operational Dashboard{% endblock %}</title>
+    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- CSS Stylesheet -->
     <link rel="stylesheet" href="{% static 'ussd/dashboard.css' %}">
     {% block extra_head %}{% endblock %}
@@ -18,24 +18,49 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h1>🏭 FactoryPulse</h1>
+            <span style="font-size: 1.35rem;">🏭</span>
+            <h1>FactoryPulse</h1>
         </div>
+
+        <div class="sidebar-section-title">Monitoring</div>
         <ul class="sidebar-menu">
             <li class="{% if request.resolver_match.url_name == 'dashboard_home' %}active{% endif %}">
-                <a href="{% url 'dashboard_home' %}">Dashboard</a>
+                <a href="{% url 'dashboard_home' %}">
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                </a>
             </li>
             <li class="{% if 'fault' in request.resolver_match.url_name %}active{% endif %}">
-                <a href="{% url 'dashboard_faults' %}">Faults</a>
-            </li>
-            <li class="{% if 'machine' in request.resolver_match.url_name %}active{% endif %}">
-                <a href="{% url 'dashboard_machines' %}">Machines</a>
-            </li>
-            <li>
-                <a href="{% url 'admin:index' %}" target="_blank">Admin ↗</a>
+                <a href="{% url 'dashboard_faults' %}">
+                    <span>🚨</span>
+                    <span>Fault Reports</span>
+                </a>
             </li>
         </ul>
+
+        <div class="sidebar-section-title">Assets</div>
+        <ul class="sidebar-menu">
+            <li class="{% if 'machine' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'dashboard_machines' %}">
+                    <span>⚙️</span>
+                    <span>Machine Management</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-section-title">System</div>
+        <ul class="sidebar-menu">
+            <li>
+                <a href="{% url 'admin:index' %}" target="_blank">
+                    <span>🛠️</span>
+                    <span>Django Admin ↗</span>
+                </a>
+            </li>
+        </ul>
+
         <div class="sidebar-footer">
-            FactoryPulse v1.0
+            <span>FactoryPulse v1.2</span>
+            <span style="color: #10b981; font-weight: 600;">● Live</span>
         </div>
     </aside>
 
@@ -43,10 +68,13 @@
     <main class="main-content">
         <header class="top-bar">
             <div class="page-title">
-                <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+                <h2>{% block page_title %}Operational Overview{% endblock %}</h2>
             </div>
             <div class="user-profile">
-                <span>👤 {{ request.user.username }}</span>
+                <div class="user-badge">
+                    <span>👤</span>
+                    <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+                </div>
                 <a href="{% url 'dashboard_logout' %}" class="btn-logout">Logout</a>
             </div>
         </header>

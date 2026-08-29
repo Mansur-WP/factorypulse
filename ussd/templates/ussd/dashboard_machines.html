@@ -1,34 +1,106 @@
 {% extends 'ussd/dashboard_base.html' %}
 
-{% block title %}FactoryPulse - Machines{% endblock %}
-{% block page_title %}Machine Management{% endblock %}
+{% block title %}FactoryPulse - Machine Management{% endblock %}
+{% block page_title %}Machine Asset Management{% endblock %}
 
 {% block content %}
-    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: var(--text-muted);">Manage factory machines monitored by the system.</span>
-        <a href="{% url 'dashboard_machine_add' %}" class="btn btn-primary">+ Add Machine</a>
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Registered Factory Assets</h3>
+            <span style="color: var(--text-muted); font-size: 0.85rem;">Monitored operational machinery and breakdown assets.</span>
+        </div>
+        <a href="{% url 'dashboard_machine_add' %}" class="btn btn-primary">+ Add New Machine</a>
     </div>
 
     <!-- Message Alerts -->
     {% if messages %}
         {% for message in messages %}
-            <div class="panel" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; padding: 1rem; margin-bottom: 1.5rem; border-radius: 6px;">
-                {{ message }}
+            <div style="background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.875rem;">
+                ✓ {{ message }}
             </div>
         {% endfor %}
     {% endif %}
 
-    <!-- Machines List Panel -->
+    <!-- Machines Grid Assets View -->
+    <div class="machine-health-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 2rem;">
+        {% for m in machines_data %}
+        <div class="asset-card" style="padding: 1.35rem;">
+            <div class="asset-header">
+                <div>
+                    <div class="asset-name" style="font-size: 1.1rem;">{{ m.name }}</div>
+                    <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        Status: <strong style="text-transform: uppercase;">{{ m.status_display }}</strong>
+                    </div>
+                </div>
+                {% if m.active_fault_count == 0 and m.status == 'OPERATIONAL' %}
+                <span class="status-dot-badge operational">
+                    <span class="status-dot"></span> OPERATIONAL
+                </span>
+                {% elif m.status == 'MAINTENANCE' %}
+                <span class="status-dot-badge" style="background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
+                    <span class="status-dot" style="background-color: #f59e0b;"></span> MAINTENANCE
+                </span>
+                {% else %}
+                <span class="status-dot-badge attention">
+                    <span class="status-dot"></span> ATTENTION
+                </span>
+                {% endif %}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; background-color: #f8fafc; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); margin: 0.5rem 0;">
+                <div>
+                    <div style="font-size: 0.6875rem; font-weight: 700; uppercase; color: var(--text-muted);">Total Faults</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">{{ m.fault_count }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.6875rem; font-weight: 700; uppercase; color: var(--text-muted);">Active</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; {% if m.active_fault_count > 0 %}color: #dc2626;{% else %}color: #047857;{% endif %}">
+                        {{ m.active_fault_count }}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 0.6875rem; font-weight: 700; uppercase; color: var(--text-muted);">Downtime</div>
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #991b1b;">{{ m.downtime_formatted }}</div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted);">
+                <span>
+                    Last Fault: 
+                    {% if m.last_fault_time %}
+                        <strong>{{ m.last_fault_time|timesince }} ago</strong>
+                    {% else %}
+                        <em>None reported</em>
+                    {% endif %}
+                </span>
+                <a href="{% url 'dashboard_machine_edit' m.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.775rem;">Edit Asset</a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="panel empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state-icon">⚙️</div>
+            <div class="empty-state-title">No Factory Machines Registered</div>
+            <div class="empty-state-desc">Get started by adding your operational factory machines.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Machines List Table View -->
     <div class="panel">
+        <div class="panel-header">
+            <h3>Machine Assets Master List</h3>
+        </div>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Machine Name</th>
+                        <th>Asset Name</th>
                         <th>Status</th>
-                        <th>Number of Faults</th>
-                        <th>Last Fault</th>
-                        <th>Action</th>
+                        <th>Total Faults</th>
+                        <th>Active Faults</th>
+                        <th>Total Downtime</th>
+                        <th>Last Incident</th>
+                        <th style="text-align: center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,22 +112,32 @@
                                 {{ m.status_display }}
                             </span>
                         </td>
-                        <td>{{ m.fault_count }} fault{{ m.fault_count|pluralize }}</td>
+                        <td>{{ m.fault_count }} report{{ m.fault_count|pluralize }}</td>
+                        <td>
+                            {% if m.active_fault_count > 0 %}
+                                <span style="font-weight: 700; color: #dc2626;">{{ m.active_fault_count }} active</span>
+                            {% else %}
+                                <span style="color: #047857; font-weight: 600;">0 active</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ m.downtime_formatted }}</strong></td>
                         <td>
                             {% if m.last_fault_time %}
                                 {{ m.last_fault_time|timesince }} ago
                             {% else %}
-                                <span style="color: var(--text-muted); font-size: 0.85rem;">No faults reported</span>
+                                <span style="color: var(--text-muted); font-size: 0.825rem;">No faults</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <a href="{% url 'dashboard_machine_edit' m.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Edit</a>
+                        <td style="text-align: center;">
+                            <a href="{% url 'dashboard_machine_edit' m.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.65rem; font-size: 0.775rem;">Edit Asset</a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-                            No machines added to the system yet.
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="empty-state-title">No machines added to system</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

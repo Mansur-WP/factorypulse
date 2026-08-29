@@ -1,18 +1,18 @@
 {% extends 'ussd/dashboard_base.html' %}
 
-{% block title %}FactoryPulse - Faults{% endblock %}
-{% block page_title %}Fault Reports{% endblock %}
+{% block title %}FactoryPulse - Fault Reports{% endblock %}
+{% block page_title %}Fault Reports Management{% endblock %}
 
 {% block content %}
-    <!-- Filter Bar -->
-    <form method="get" class="filter-bar">
-        <div class="form-group">
-            <label for="search">Search</label>
-            <input type="text" name="q" id="search" placeholder="Machine, problem, reporter..." value="{{ q_search }}" class="form-control">
+    <!-- Filter Toolbar -->
+    <form method="get" class="filter-toolbar">
+        <div class="form-group" style="flex: 1; min-width: 200px;">
+            <label for="search">Search Keywords</label>
+            <input type="text" name="q" id="search" placeholder="Machine name, problem, reporter..." value="{{ q_search }}" class="form-control">
         </div>
         
-        <div class="form-group">
-            <label for="severity">Severity</label>
+        <div class="form-group" style="min-width: 150px;">
+            <label for="severity">Severity Filter</label>
             <select name="severity" id="severity" class="form-control">
                 <option value="">All Severities</option>
                 <option value="Low" {% if current_severity == 'Low' %}selected{% endif %}>Low</option>
@@ -22,19 +22,20 @@
             </select>
         </div>
 
-        <div class="form-group">
-            <label for="status">Status</label>
+        <div class="form-group" style="min-width: 150px;">
+            <label for="status">Status Filter</label>
             <select name="status" id="status" class="form-control">
                 <option value="">All Statuses</option>
                 <option value="OPEN" {% if current_status == 'OPEN' %}selected{% endif %}>Open</option>
                 <option value="ASSIGNED" {% if current_status == 'ASSIGNED' %}selected{% endif %}>Assigned</option>
+                <option value="ACCEPTED" {% if current_status == 'ACCEPTED' %}selected{% endif %}>Accepted</option>
                 <option value="IN_PROGRESS" {% if current_status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
                 <option value="RESOLVED" {% if current_status == 'RESOLVED' %}selected{% endif %}>Resolved</option>
             </select>
         </div>
 
-        <div class="form-group">
-            <label for="assigned_to">Assigned To</label>
+        <div class="form-group" style="min-width: 160px;">
+            <label for="assigned_to">Assigned Technician</label>
             <select name="assigned_to" id="assigned_to" class="form-control">
                 <option value="">All Technicians</option>
                 {% for tech in technicians %}
@@ -46,32 +47,36 @@
         </div>
 
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="btn btn-primary">Search</button>
-            <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary">Clear</a>
+            <button type="submit" class="btn btn-primary">Apply Filter</button>
+            <a href="{% url 'dashboard_faults' %}" class="btn btn-secondary">Reset</a>
         </div>
     </form>
 
     <!-- Faults Table Panel -->
     <div class="panel">
+        <div class="panel-header">
+            <h3>Breakdown Reports History</h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Showing {{ faults|length }} report{{ faults|length|pluralize }}</span>
+        </div>
         <div class="table-container">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Machine</th>
-                        <th>Problem</th>
+                        <th>Fault ID</th>
+                        <th>Machine Asset</th>
+                        <th>Problem Description</th>
                         <th>Severity</th>
                         <th>Status</th>
-                        <th>Assigned To</th>
-                        <th>Reporter</th>
-                        <th>Created</th>
-                        <th>Action</th>
+                        <th>Assigned Technician</th>
+                        <th>Reporter Contact</th>
+                        <th>Reported Timestamp</th>
+                        <th style="text-align: center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for fault in faults %}
                     <tr>
-                        <td>#{{ fault.id }}</td>
+                        <td><strong>#{{ fault.id }}</strong></td>
                         <td><strong>{{ fault.machine }}</strong></td>
                         <td>{{ fault.problem }}</td>
                         <td>
@@ -86,33 +91,39 @@
                         </td>
                         <td>
                             {% if fault.assigned_to %}
-                                <span style="font-weight: 500; color: #1e3a8a;">
+                                <span style="font-weight: 600; color: #1e40af;">
                                     👤 {{ fault.assigned_to.technician_profile.name|default:fault.assigned_to.username }}
                                 </span>
                             {% else %}
-                                <span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">Unassigned</span>
+                                <span style="color: var(--text-muted); font-size: 0.825rem; font-style: italic;">Unassigned</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td style="font-size: 0.825rem; color: #475569;">
                             {% if fault.phone_number %}
-                                {{ fault.phone_number }}
+                                📞 {{ fault.phone_number }}
                             {% elif fault.telegram_username %}
-                                @{{ fault.telegram_username }} (TG)
+                                ✈️ @{{ fault.telegram_username }}
                             {% elif fault.telegram_user_id %}
-                                ID: {{ fault.telegram_user_id }} (TG)
+                                ✈️ ID: {{ fault.telegram_user_id }}
                             {% else %}
-                                --
+                                <span style="color: var(--text-muted);">Unknown</span>
                             {% endif %}
                         </td>
-                        <td>{{ fault.created_at|date:"Y-m-d H:i" }}</td>
-                        <td>
-                            <a href="{% url 'dashboard_fault_detail' fault.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">View</a>
+                        <td style="color: var(--text-muted); font-size: 0.825rem;">
+                            {{ fault.created_at|date:"M d, Y H:i" }}
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="{% url 'dashboard_fault_detail' fault.id %}" class="btn btn-secondary" style="padding: 0.25rem 0.65rem; font-size: 0.775rem;">View Detail</a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-                            No fault reports match your criteria.
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🔍</div>
+                                <div class="empty-state-title">No Fault Reports Found</div>
+                                <div class="empty-state-desc">No breakdown reports match your selected search or filter criteria. Try clearing filters.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

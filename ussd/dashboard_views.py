@@ -201,15 +201,27 @@ def dashboard_machines(request):
     machines = Machine.objects.all()
     machines_data = []
 
+    from .services import calculate_fault_downtime, format_duration
+    from datetime import timedelta
+
     for m in machines:
-        fault_count = FaultReport.objects.filter(machine=m.name).count()
-        last_fault = FaultReport.objects.filter(machine=m.name).order_by('-created_at', '-id').first()
+        machine_faults = FaultReport.objects.filter(machine=m.name).prefetch_related('history')
+        fault_count = machine_faults.count()
+        active_fault_count = machine_faults.exclude(status=FaultReport.STATUS_RESOLVED).count()
+        last_fault = machine_faults.order_by('-created_at', '-id').first()
+
+        total_sec = sum(calculate_fault_downtime(f)['duration_seconds'] for f in machine_faults)
+        downtime_formatted = format_duration(timedelta(seconds=total_sec))
+
         machines_data.append({
             'id': m.id,
             'name': m.name,
             'status': m.status,
             'status_display': m.get_status_display(),
             'fault_count': fault_count,
+            'active_fault_count': active_fault_count,
+            'health_status': 'Operational' if active_fault_count == 0 and m.status == 'OPERATIONAL' else 'Attention Required',
+            'downtime_formatted': downtime_formatted,
             'last_fault_time': last_fault.created_at if last_fault else None,
         })
 
