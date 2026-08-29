@@ -1,0 +1,192 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor Login - FactoryPulse</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'ussd/dashboard.css' %}">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #0f172a;
+            padding: 1.5rem;
+        }
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+        }
+        .login-card {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            padding: 2.5rem 2rem;
+            width: 100%;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .brand-icon {
+            font-size: 2.5rem;
+            width: 64px;
+            height: 64px;
+            line-height: 64px;
+            background-color: #f1f5f9;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.25rem;
+        }
+        .login-header p {
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .login-alert {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 0.85rem 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            line-height: 1.4;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .form-group label {
+            font-size: 0.775rem;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: #0f172a;
+            outline: none;
+            transition: all 0.2s ease-in-out;
+            background-color: #ffffff;
+        }
+        .form-control:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            border-radius: 8px;
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .login-btn:hover {
+            background-color: #1d4ed8;
+        }
+        .login-btn:active {
+            transform: scale(0.99);
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.775rem;
+            color: #94a3b8;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            
+            <div class="login-header">
+                <div class="brand-icon">🏭</div>
+                <h1>FactoryPulse</h1>
+                <p>Supervisor Dashboard Login</p>
+            </div>
+
+            <!-- Error Alerts -->
+            {% if error_message %}
+                <div class="login-alert">
+                    <span>⚠️</span>
+                    <span>{{ error_message }}</span>
+                </div>
+            {% endif %}
+
+            <form method="post" class="login-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next_url|default:'' }}">
+
+                <div class="form-group">
+                    <label for="username">Supervisor Username</label>
+                    <input type="text" name="username" id="username" required autofocus 
+                           placeholder="Enter your username" class="form-control"
+                           value="{{ form_data.username|default:'' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" name="password" id="password" required 
+                           placeholder="Enter your password" class="form-control">
+                </div>
+
+                <button type="submit" class="login-btn">Sign In to Dashboard</button>
+            </form>
+
+            <div class="login-footer">
+                🔒 Restricted Access • Authorized Personnel Only
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

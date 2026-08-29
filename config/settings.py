@@ -119,7 +119,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -133,3 +133,38 @@ AFRICASTALKING_API_KEY = os.environ.get('AFRICASTALKING_API_KEY', '')
 # Telegram Bot Configuration (Development Interface)
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 
+# ------------------------------------------------------------------ #
+# Logging — Debug SMS integration
+# Outputs [SMS] prefixed lines to the console at DEBUG level.
+# Safe: never logs credentials, only masked phone numbers and AT status codes.
+# ------------------------------------------------------------------ #
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        # Capture all [SMS] debug lines from the sms_service module
+        'ussd.sms_service': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        # Also surface services.py SMS dispatch errors
+        'ussd.services': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}

@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 
 class FaultReport(models.Model):
@@ -28,6 +29,14 @@ class FaultReport(models.Model):
     problem = models.CharField(max_length=255)
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='assigned_faults',
+    )
+    assignment_notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -59,3 +68,18 @@ class Machine(models.Model):
         return f"{self.name} ({self.get_status_display()})"
 
 
+class Technician(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='technician_profile',
+    )
+    name = models.CharField(max_length=150)
+    phone_number = models.CharField(max_length=20, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.phone_number})" if self.phone_number else self.name

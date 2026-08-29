@@ -1,8 +1,13 @@
+import logging
+
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from .models import FaultReport
 from .services import MACHINES, PROBLEMS, SEVERITIES, create_fault_report
+
+logger = logging.getLogger(__name__)
+
 
 
 
@@ -137,3 +142,38 @@ def ussd_callback(request):
             "3. My Reports",
             content_type='text/plain',
         )
+
+
+@csrf_exempt
+@require_POST
+def sms_delivery_callback(request):
+    """
+    Africa's Talking SMS Delivery Status callback.
+    POST /sms/delivery/
+
+    Africa's Talking will POST:
+      - id          : Unique message ID
+      - status      : e.g. "Success", "Failed", "Sent", "Rejected"
+      - phoneNumber : Recipient phone number
+      - failureReason (optional): Reason for failure
+
+    We log the delivery event. We do not claim that "Success" means the
+    technician read the SMS — only that the network accepted delivery.
+    """
+    msg_id = request.POST.get('id', 'unknown')
+    status = request.POST.get('status', 'unknown')
+    phone = request.POST.get('phoneNumber', 'unknown')
+    failure_reason = request.POST.get('failureReason', '')
+
+    if status.lower() in ('success', 'delivered'):
+        logger.info(f"SMS delivery confirmed: msg_id={msg_id}, phone={phone}")
+    elif failure_reason:
+        logger.warning(
+            f"SMS delivery failed: msg_id={msg_id}, phone={phone}, "
+            f"status={status}, reason={failure_reason}"
+        )
+    else:
+        logger.info(f"SMS delivery update: msg_id={msg_id}, phone={phone}, status={status}")
+
+    return HttpResponse("OK", status=200, content_type='text/plain')
+

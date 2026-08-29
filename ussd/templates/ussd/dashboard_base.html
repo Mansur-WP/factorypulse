@@ -47,7 +47,7 @@
             </div>
             <div class="user-profile">
                 <span>👤 {{ request.user.username }}</span>
-                <a href="{% url 'admin:logout' %}?next={% url 'dashboard_home' %}" class="btn-logout">Logout</a>
+                <a href="{% url 'dashboard_logout' %}" class="btn-logout">Logout</a>
             </div>
         </header>
 

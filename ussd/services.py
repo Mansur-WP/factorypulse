@@ -1,12 +1,17 @@
 """
 FactoryPulse Core Business Logic Services
 
-Shared across USSD and Telegram (and future interfaces).
+Shared across USSD, Telegram, and Supervisor Dashboard.
 """
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 from django.db.models import QuerySet
-from .models import FaultReport
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+
+from .models import FaultReport, Machine, Technician
+
+User = get_user_model()
 
 MACHINES: Dict[str, str] = {
     '1': 'Generator',
@@ -117,7 +122,6 @@ def get_machine_statuses() -> List[Dict[str, str]]:
     """
     Returns the list of factory machines and their operational status from the database.
     """
-    from .models import Machine
     try:
         machines = Machine.objects.all()
         if not machines.exists():
@@ -136,18 +140,75 @@ def get_machine_statuses() -> List[Dict[str, str]]:
         return list(MACHINE_STATUSES)
 
 
+def get_available_technicians() -> QuerySet:
+    """
+    Returns all registered technicians.
+    """
+    return Technician.objects.select_related('user').all()
+
+
+def assign_fault_to_technician(
+    fault_id: int,
+    technician_user_or_id: Union[User, int, str],
+    notes: str = ''
+) -> FaultReport:
+    """
+    Assigns an OPEN fault to a technician, transitioning its status to ASSIGNED.
+    Raises ValidationError if the fault is not OPEN/ASSIGNED, is resolved, or user is not a technician.
+    """
+    try:
+        fault = FaultReport.objects.get(pk=fault_id)
+    except FaultReport.DoesNotExist:
+        raise ValidationError(f"Fault report #{fault_id} does not exist.")
+
+    if fault.status == FaultReport.STATUS_RESOLVED:
+        raise ValidationError("Resolved faults cannot be assigned.")
+
+    if fault.status not in (FaultReport.STATUS_OPEN, FaultReport.STATUS_ASSIGNED):
+        raise ValidationError(f"Cannot assign a fault in '{fault.get_status_display()}' status.")
+
+    # Resolve technician user
+    if isinstance(technician_user_or_id, User):
+        tech_user = technician_user_or_id
+    else:
+        try:
+            tech_user = User.objects.get(pk=technician_user_or_id)
+        except (User.DoesNotExist, ValueError):
+            raise ValidationError("Invalid technician selected.")
+
+    # Verify technician profile exists
+    if not hasattr(tech_user, 'technician_profile'):
+        raise ValidationError(f"User '{tech_user.username}' is not registered as a technician.")
+
+    fault.assigned_to = tech_user
+    if notes:
+        fault.assignment_notes = notes.strip()
+    fault.status = FaultReport.STATUS_ASSIGNED
+    fault.save()
+
+    # Trigger SMS notification — safe, never rolls back the assignment
+    try:
+        from .sms_service import send_technician_assignment_sms
+        tech_profile = getattr(tech_user, 'technician_profile', None)
+        send_technician_assignment_sms(fault, tech_profile)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"SMS dispatch failed for fault #{fault.id}: {e}")
+
+    return fault
+
+
 def update_fault_status(fault_id: int, new_status: str) -> FaultReport:
     """
     Updates the status of a FaultReport, enforcing validation rules.
     Allowed transitions:
-      - OPEN -> ASSIGNED
+      - OPEN -> ASSIGNED (via assignment or direct)
       - ASSIGNED -> IN_PROGRESS
       - IN_PROGRESS -> RESOLVED
       - Any non-RESOLVED state -> OPEN (reopen)
     Raises ValidationError for invalid transitions.
     """
-    from django.core.exceptions import ValidationError
-    
     try:
         fault = FaultReport.objects.get(pk=fault_id)
     except FaultReport.DoesNotExist:
@@ -220,7 +281,6 @@ def get_recent_activity() -> list:
     """
     Returns recent activities based on FaultReport objects.
     """
-    # Fetch 10 most recent fault reports
     recent_reports = FaultReport.objects.order_by('-created_at', '-id')[:10]
     activity = []
     
@@ -233,6 +293,14 @@ def get_recent_activity() -> list:
                 'machine': r.machine,
                 'detail': "",
             })
+        elif r.status == FaultReport.STATUS_ASSIGNED and r.assigned_to:
+            tech_name = r.assigned_to.technician_profile.name if hasattr(r.assigned_to, 'technician_profile') else r.assigned_to.get_full_name() or r.assigned_to.username
+            activity.append({
+                'time': timestamp,
+                'message': f"Fault #{r.id} assigned to {tech_name}",
+                'machine': r.machine,
+                'detail': f"{r.severity} severity",
+            })
         else:
             activity.append({
                 'time': timestamp,
@@ -242,4 +310,3 @@ def get_recent_activity() -> list:
             })
             
     return activity
-

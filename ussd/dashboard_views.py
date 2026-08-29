@@ -1,24 +1,84 @@
 """
 FactoryPulse Supervisor Dashboard Views
 
-All dashboard views are protected with Django staff authentication.
+All dashboard views are protected with Django staff authentication
+using a dedicated login page.
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Q
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 
-from .models import FaultReport, Machine
+from .models import FaultReport, Machine, Technician
 from .services import (
     update_fault_status,
     get_dashboard_stats,
     get_recent_activity,
+    get_available_technicians,
+    assign_fault_to_technician,
 )
 
 
-@staff_member_required
+def supervisor_required(view_func):
+    """
+    Decorator for views that checks if the user is logged in and is a staff member,
+    redirecting to the custom dashboard login page if not.
+    """
+    decorator = user_passes_test(
+        lambda u: u.is_authenticated and u.is_active and u.is_staff,
+        login_url='dashboard_login'
+    )
+    return decorator(view_func)
+
+
+def dashboard_login(request):
+    """
+    Custom login view for supervisors and staff members.
+    """
+    if request.user.is_authenticated and request.user.is_staff:
+        next_url = request.GET.get('next') or request.POST.get('next') or 'dashboard_home'
+        return redirect(next_url)
+
+    error_message = None
+    form_data = {}
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        next_url = request.POST.get('next', '').strip() or 'dashboard_home'
+        form_data = {'username': username}
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            if user.is_staff:
+                login(request, user)
+                return redirect(next_url)
+            else:
+                error_message = "Access denied. Only authorized staff accounts can access the Supervisor Dashboard."
+        else:
+            error_message = "Invalid username or password. Please try again."
+
+    context = {
+        'error_message': error_message,
+        'form_data': form_data,
+        'next_url': request.GET.get('next', ''),
+    }
+    return render(request, 'ussd/dashboard_login.html', context)
+
+
+def dashboard_logout(request):
+    """
+    Logs out the supervisor and redirects to the dashboard login page.
+    """
+    logout(request)
+    return redirect('dashboard_login')
+
+
+@supervisor_required
 def dashboard_home(request):
     """
     Dashboard homepage. Displays statistics summaries, recent reports, and recent activities.
@@ -35,23 +95,26 @@ def dashboard_home(request):
     return render(request, 'ussd/dashboard_home.html', context)
 
 
-@staff_member_required
+@supervisor_required
 def dashboard_faults(request):
     """
-    Displays all reported machine faults with simple search and status/severity filters.
+    Displays all reported machine faults with simple search, status/severity filters,
+    and assigned technician filtering.
     """
     q_search = request.GET.get('q', '').strip()
     current_severity = request.GET.get('severity', '').strip()
     current_status = request.GET.get('status', '').strip()
+    current_assigned = request.GET.get('assigned_to', '').strip()
 
-    faults = FaultReport.objects.all()
+    faults = FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile').all()
 
     if q_search:
         faults = faults.filter(
             Q(machine__icontains=q_search) |
             Q(problem__icontains=q_search) |
             Q(phone_number__icontains=q_search) |
-            Q(telegram_username__icontains=q_search)
+            Q(telegram_username__icontains=q_search) |
+            Q(assigned_to__technician_profile__name__icontains=q_search)
         )
 
     if current_severity:
@@ -60,23 +123,48 @@ def dashboard_faults(request):
     if current_status:
         faults = faults.filter(status=current_status)
 
+    if current_assigned:
+        faults = faults.filter(assigned_to_id=current_assigned)
+
+    technicians = get_available_technicians()
+
     context = {
         'faults': faults,
         'q_search': q_search,
         'current_severity': current_severity,
         'current_status': current_status,
+        'current_assigned': current_assigned,
+        'technicians': technicians,
     }
     return render(request, 'ussd/dashboard_faults.html', context)
 
 
-@staff_member_required
+@supervisor_required
 def dashboard_fault_detail(request, pk):
     """
-    Displays the full details of a specific fault report and handles status updates.
+    Displays the full details of a specific fault report and handles status updates & technician assignments.
     """
-    fault = get_object_or_404(FaultReport, pk=pk)
+    fault = get_object_or_404(FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile'), pk=pk)
 
     if request.method == 'POST':
+        action = request.POST.get('action', '').strip()
+        
+        # Technician assignment action
+        if action == 'assign' or 'technician_id' in request.POST:
+            tech_id = request.POST.get('technician_id', '').strip()
+            notes = request.POST.get('notes', '').strip()
+            try:
+                from .services import assign_fault_to_technician
+                assign_fault_to_technician(fault.id, tech_id, notes)
+                fault.refresh_from_db()
+                tech_name = fault.assigned_to.technician_profile.name if hasattr(fault.assigned_to, 'technician_profile') else fault.assigned_to.username
+                messages.success(request, f"Fault #{fault.id} assigned to {tech_name} successfully.")
+                return redirect('dashboard_fault_detail', pk=fault.id)
+            except ValidationError as e:
+                messages.error(request, e.message)
+                return redirect('dashboard_fault_detail', pk=fault.id)
+
+        # Status transition action
         new_status = request.POST.get('status', '').strip()
         try:
             update_fault_status(fault.id, new_status)
@@ -86,13 +174,17 @@ def dashboard_fault_detail(request, pk):
             messages.error(request, e.message)
             return redirect('dashboard_fault_detail', pk=fault.id)
 
+    available_technicians = get_available_technicians()
+
     context = {
         'fault': fault,
+        'available_technicians': available_technicians,
     }
     return render(request, 'ussd/dashboard_fault_detail.html', context)
 
 
-@staff_member_required
+
+@supervisor_required
 def dashboard_machines(request):
     """
     Displays a list of registered machines, their current operational status,
@@ -119,7 +211,7 @@ def dashboard_machines(request):
     return render(request, 'ussd/dashboard_machines.html', context)
 
 
-@staff_member_required
+@supervisor_required
 def dashboard_machine_add(request):
     """
     Registers a new machine in the system.
@@ -150,7 +242,7 @@ def dashboard_machine_add(request):
     return render(request, 'ussd/dashboard_machine_form.html', context)
 
 
-@staff_member_required
+@supervisor_required
 def dashboard_machine_edit(request, pk):
     """
     Edits the name or operational status of an existing machine.
