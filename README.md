@@ -112,6 +112,7 @@ FactoryPulse/
 ├── .env
 ├── .env.example
 ├── .gitignore
+├── requirements.txt
 └── README.md
 ```
 
@@ -305,7 +306,4 @@ FactoryPulse aims to make machine fault reporting faster and more accessible for
 Report problems faster.
 Respond sooner.
 Keep production moving.
-```
-
-```
 ```
