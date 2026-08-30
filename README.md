@@ -1,343 +1,525 @@
-# 🏭 FactoryPulse
+ 
+# FactoryPulse 🏭
 
-## Manufacturing Fault Reporting & Maintenance Coordination
+### Report problems faster. Respond sooner. Keep production moving.
 
-FactoryPulse is a lightweight manufacturing maintenance and fault-reporting platform designed for African factories. It enables shop-floor workers to report machine breakdowns and operational faults instantly without needing a smartphone or internet connection, while giving factory supervisors a centralized dashboard to track, assign, and resolve issues.
+FactoryPulse is a manufacturing maintenance and communication platform that helps factory workers report machine faults quickly, enables supervisors to coordinate maintenance, and allows technicians to respond through SMS.
+
+It is designed for manufacturing environments where workers may not have smartphones, reliable internet access, or access to complex software.
 
 ---
 
-## 🚀 System Architecture
+## 🚨 The Problem
 
-FactoryPulse uses a single, shared business logic layer across all interfaces:
+Machine breakdowns can cause production delays when faults are reported manually or maintenance teams are not coordinated quickly.
+
+Common challenges include:
+
+- Slow fault reporting
+- Poor communication between workers, supervisors, and technicians
+- Limited visibility into active machine problems
+- Difficulty tracking maintenance progress
+- Lack of centralized fault and downtime records
+- Limited access to smartphones or reliable internet for some workers
+
+---
+
+## 💡 The Solution
+
+FactoryPulse provides a simple maintenance workflow using familiar communication channels.
+
+A worker can report a machine problem using **USSD** without needing a smartphone or internet connection.
+
+The supervisor receives the fault in the FactoryPulse dashboard and assigns a technician.
+
+The technician receives an **SMS** and can respond using simple SMS commands.
+
+### Core Workflow
 
 ```text
-Shop-Floor Worker (USSD) ──┐
-                           │
-Developer / Tester (TG) ───┼──→ FactoryPulse Services (ussd/services.py) ──→ SQLite Database
-                           │              │
-Supervisor (Dashboard) ────┘              ↓
-                              SMS Service (ussd/sms_service.py)
-                                          ↓
-                              Africa's Talking SMS API
-                                          ↓
-                              Technician Phone
-```
+Worker
+  │
+  │ USSD
+  ▼
+Report Machine Fault
+  │
+  ▼
+FactoryPulse
+  │
+  ▼
+Supervisor Dashboard
+  │
+  │ Assign Technician
+  ▼
+Technician SMS
+  │
+  ├── ACCEPT <fault_id>
+  │
+  ├── START <fault_id>
+  │
+  └── RESOLVE <fault_id>
+  │
+  ▼
+FactoryPulse
+  │
+  ▼
+Updated Dashboard
+````
 
 ---
 
-## 📱 Features
+## 👥 Target Users
 
-### 1. 📞 Africa's Talking USSD Gateway (`POST /ussd/`)
-- Interactive USSD menu (`*384*...#`).
-- Fast, multi-step fault reporting (Machine → Problem → Severity → Confirmation).
-- Session cancellation handling (`0` or `Cancel`).
-- Cumulative session state parser with robust input validation.
+### Factory Workers
 
-### 2. 🤖 Telegram Development Bot (`run_telegram_bot`)
-- Interactive Telegram interface mirroring the complete USSD flow with reply keyboards and numerical inputs.
-- Custom problem descriptions ("Other" option).
-- Machine status checking & isolated personal report history ("My Reports").
+Report machine faults through USSD without requiring a smartphone.
 
-### 3. 🖥️ Supervisor Dashboard (`/dashboard/`)
-- **Custom Login Portal**: Modern, responsive login page at `/dashboard/login/` (separate from Django Admin).
-- **Protected Authentication**: Restricted to authenticated staff/admin accounts.
-- **KPI Summary Cards**: Real-time counters for Total, Open, Critical, and Resolved faults.
-- **Filterable Faults List**: Search by machine, problem, reporter, and filter by status, severity, and assigned technician.
-- **Technician Assignment**: Assign faults to registered technicians with optional notes.
-- **Fault Workflow Actions**: Strict state transitions (`OPEN` → `ASSIGNED` → `IN_PROGRESS` → `RESOLVED`).
-- **Machine Management (`/dashboard/machines/`)**: View, add, and edit machines with operational statuses (`OPERATIONAL`, `MAINTENANCE`, `OFFLINE`) and fault histories.
-- **Activity Feed**: Real-time log of recent reports and resolutions.
+### Supervisors
 
-### 4. 👷 Technician Assignment & Two-Way SMS Workflow
-- **Technician Model**: Registered technicians linked to Django users with phone numbers.
-- **Assignment Workflow**: Supervisors assign faults to technicians via the dashboard (`OPEN` → `ASSIGNED`).
-- **Outgoing SMS Notifications**: Automatic SMS sent to technician upon assignment.
-- **Incoming SMS Responses** (`POST /sms/incoming/`): Technicians reply via SMS to progress assigned tasks:
-  - `ACCEPT <id>`: `ASSIGNED` → `ACCEPTED`
-  - `START <id>`: `ACCEPTED` → `IN_PROGRESS`
-  - `RESOLVE <id>`: `IN_PROGRESS` → `RESOLVED`
-- **SMS Security & Validation**: Phone matching prevents unauthorized modifications; invalid commands receive instructional replies.
-- **SMS Delivery Callback** (`POST /sms/delivery/`): Webhook endpoint for Africa's Talking delivery status reports.
+Monitor machine faults, assign technicians, and track maintenance activity.
+
+### Maintenance Technicians
+
+Receive fault assignments through SMS and update the progress of their assigned faults.
+
+### Factory Management
+
+Use maintenance records and downtime information to understand operational problems.
 
 ---
 
-## 🛠️ Tech Stack
+## 📱 Africa's Talking Integration
 
-- **Backend**: Python 3.12+ (tested on 3.14), Django 5.2+
-- **Database**: SQLite (Development / Production ready with PostgreSQL)
-- **Interfaces**: Africa's Talking USSD API, Africa's Talking SMS API, Telegram Bot API (`python-telegram-bot`)
-- **SMS**: Direct REST API integration via Python stdlib `http.client` (bypasses SDK SSL issues on Python 3.14)
-- **Frontend**: Django Templates & Vanilla CSS (Responsive, no heavy frontend frameworks)
-- **Environment**: `python-dotenv`
+FactoryPulse integrates **Africa's Talking APIs** for communication between the factory and the platform.
 
----
+### USSD
 
-## 📂 Project Structure
+Workers use USSD to:
+
+* Report faults
+* Select machines
+* Select problems
+* Select severity
+* Confirm reports
+
+### SMS
+
+Technicians receive assignment notifications and can update faults using SMS.
+
+Example:
 
 ```text
-FactoryPulse/
-│
-├── config/
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-│
-├── ussd/
-│   ├── migrations/
-│   ├── static/ussd/
-│   │   └── dashboard.css          # Dashboard styling
-│   ├── templates/ussd/
-│   │   ├── dashboard_base.html
-│   │   ├── dashboard_home.html
-│   │   ├── dashboard_faults.html
-│   │   ├── dashboard_fault_detail.html
-│   │   ├── dashboard_login.html
-│   │   ├── dashboard_machines.html
-│   │   └── dashboard_machine_form.html
-│   ├── management/commands/
-│   │   └── run_telegram_bot.py    # Management command for Telegram bot
-│   ├── admin.py                   # Django Admin registration
-│   ├── apps.py                    # App configuration & auto-seeding
-│   ├── models.py                  # FaultReport, Machine & Technician models
-│   ├── services.py                # Core shared business logic & state workflows
-│   ├── sms_service.py             # Africa's Talking SMS service (http.client)
-│   ├── views.py                   # USSD callback & SMS delivery webhook
-│   ├── dashboard_views.py         # Supervisor Dashboard views
-│   ├── urls.py                    # Dashboard, USSD & SMS route definitions
-│   ├── tests.py                   # USSD integration tests
-│   ├── test_services.py           # Business logic unit tests
-│   ├── test_telegram.py           # Telegram bot handler tests
-│   ├── test_dashboard.py          # Dashboard auth, filtering & workflow tests
-│   └── test_sms.py                # SMS service, assignment integration & webhook tests
-│
-├── manage.py
-├── .env.example
-├── .gitignore
-├── requirements.txt
-└── README.md
+ACCEPT 13
+START 13
+RESOLVE 13
 ```
+
+FactoryPulse processes these commands and updates the fault lifecycle.
 
 ---
 
-## ⚙️ Quickstart & Setup Guide
+## 🔄 Fault Lifecycle
 
-### 1. Clone the repository
+Every fault follows a controlled workflow:
+
+```text
+OPEN
+  ↓
+ASSIGNED
+  ↓
+ACCEPTED
+  ↓
+IN_PROGRESS
+  ↓
+RESOLVED
+```
+
+Invalid state transitions are rejected.
+
+Technicians can only update faults assigned to them.
+
+---
+
+## 🖥️ Supervisor Dashboard
+
+The FactoryPulse dashboard provides operational visibility including:
+
+* Total breakdown reports
+* Active incidents
+* Critical faults
+* Resolved faults
+* Machine health
+* Machine fault history
+* Assigned technicians
+* Downtime information
+* Average resolution time
+* Recent activity
+* Fault details and status history
+
+The dashboard is the main interface for factory supervisors.
+
+---
+
+## 🏭 Machine Management
+
+Machines are stored in the database and managed through FactoryPulse.
+
+The USSD machine menu is dynamically generated from the database.
+
+This means a factory can add or modify machines without changing the application code.
+
+Example:
+
+```text
+Django Admin / FactoryPulse Management
+            ↓
+        Machine Database
+            ↓
+       USSD Machine Menu
+```
+
+This makes the solution configurable for different factories.
+
+---
+
+## 📊 Operational Intelligence
+
+FactoryPulse records maintenance activity to provide useful operational information such as:
+
+* Fault frequency
+* Machine failure history
+* Critical fault statistics
+* Average resolution time
+* Downtime
+* Maintenance history
+
+This helps supervisors understand which machines require attention and where production downtime is occurring.
+
+---
+
+## 🔐 Security
+
+FactoryPulse includes security controls such as:
+
+* Environment-based secrets
+* API credentials excluded from source control
+* Authentication for the supervisor dashboard
+* Role/permission checks
+* Server-side input validation
+* Technician ownership validation
+* Controlled fault state transitions
+* POST-based external callbacks
+* CSRF protection for internal dashboard forms
+* Error logging without exposing credentials
+* Database-backed fault records
+
+Production deployment is subject to an additional security and configuration review.
+
+---
+
+## 🧪 Testing
+
+FactoryPulse includes automated tests covering:
+
+* USSD fault reporting
+* Machine selection
+* Fault validation
+* Fault cancellation
+* Technician assignment
+* Technician authorization
+* Fault state transitions
+* SMS notifications
+* Incoming technician SMS commands
+* Dashboard access
+* Dashboard functionality
+* Machine management
+* Fault history
+* Analytics
+
+The project currently contains **137 automated tests** covering the implemented functionality.
+
+Run the test suite with:
 
 ```bash
-git clone https://github.com/Mansur-WP/factorypulse.git
-cd factorypulse
+python manage.py test
 ```
 
-### 2. Create and activate a virtual environment
+Run Django's system checks with:
 
-**Windows:**
+```bash
+python manage.py check
+```
+
+---
+
+## 🏗️ Technology Stack
+
+### Backend
+
+* Python
+* Django
+
+### Database
+
+* SQLite for development
+* PostgreSQL-ready for deployment
+
+### Communication
+
+* Africa's Talking USSD
+* Africa's Talking SMS
+
+### Additional Integration
+
+* Telegram development interface
+
+### Frontend
+
+* Django Templates
+* HTML
+* CSS
+* JavaScript
+
+### Deployment
+
+* Docker
+* Gunicorn
+
+---
+
+## ⚙️ Configuration
+
+FactoryPulse uses environment variables for sensitive configuration.
+
+Create a `.env` file based on:
+
+```text
+.env.example
+```
+
+Example configuration:
+
+```env
+DJANGO_SECRET_KEY=your-secret-key
+DEBUG=True
+
+AFRICASTALKING_USERNAME=your-username
+AFRICASTALKING_API_KEY=your-api-key
+
+TELEGRAM_BOT_TOKEN=your-telegram-token
+```
+
+Never commit the real `.env` file to Git.
+
+---
+
+## 🚀 Running Locally
+
+Clone the repository:
+
+```bash
+git clone <repository-url>
+cd FactoryPulse
+```
+
+Create a virtual environment:
+
 ```bash
 python -m venv venv
+```
+
+Activate it on Windows:
+
+```powershell
 venv\Scripts\activate
 ```
 
-**macOS / Linux:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install dependencies
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure environment variables
-
-Create a `.env` file in the root directory:
-
-```bash
-cp .env.example .env
-```
-
-Ensure the following variables are present in `.env`:
-
-```env
-# Africa's Talking Credentials (USSD & SMS)
-AFRICASTALKING_USERNAME=sandbox
-AFRICASTALKING_API_KEY=your_africastalking_api_key
-
-# Telegram Bot (Optional for local testing)
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_from_botfather
-
-# Django Settings
-DJANGO_SECRET_KEY=your-secret-key-here
-DEBUG=True
-ALLOWED_HOSTS=*
-```
-
-> **Note**: Never commit real `.env` files or API secrets to version control.
-
-### 5. Run migrations
+Apply migrations:
 
 ```bash
 python manage.py migrate
 ```
-*(This automatically migrates the database and seeds the default factory machines and sample technicians.)*
 
-### 6. Create a Supervisor / Staff account
-
-To log into the **Supervisor Dashboard**, you need a staff account:
-
-```bash
-python manage.py createsuperuser
-```
-Follow the prompts to enter your username, email, and password.
-
-### 7. Run the test suite
-
-```bash
-python manage.py check
-python manage.py test
-```
-*All 117 automated tests should pass.*
-
----
-
-## 🚀 Running the Services
-
-### 🖥️ 1. Start the Web Server & Supervisor Dashboard
+Run the development server:
 
 ```bash
 python manage.py runserver
 ```
 
-Once running, navigate in your browser:
-- **Supervisor Dashboard**: [http://localhost:8000/dashboard/](http://localhost:8000/dashboard/) (or root `/` which redirects to dashboard)
-- **Custom Login Page**: [http://localhost:8000/dashboard/login/](http://localhost:8000/dashboard/login/)
-- **Faults Management**: [http://localhost:8000/dashboard/faults/](http://localhost:8000/dashboard/faults/)
-- **Machine Management**: [http://localhost:8000/dashboard/machines/](http://localhost:8000/dashboard/machines/)
-- **Django Admin**: [http://localhost:8000/admin/](http://localhost:8000/admin/)
+Open:
 
-*(You will be prompted to log in using the superuser account created in step 6).*
+```text
+http://127.0.0.1:8000/
+```
 
 ---
 
-### 🤖 2. Start the Telegram Development Bot
+## 📦 Docker
 
-In a separate terminal (with the virtual environment activated):
+FactoryPulse is prepared for containerized deployment.
+
+Build the image:
 
 ```bash
-python manage.py run_telegram_bot
+docker build -t factorypulse .
 ```
 
-Open Telegram, search for your bot, and send `/start` to begin reporting faults or viewing machine statuses.
+Run the container:
+
+```bash
+docker run --env-file .env -p 8000:8000 factorypulse
+```
+
+The container runs FactoryPulse using Gunicorn.
 
 ---
 
-### 🌍 3. Africa's Talking USSD Gateway Testing
+## 🌍 Hackathon Product Vision
 
-The USSD endpoint is located at:
-```text
-POST http://localhost:8000/ussd/
-```
+FactoryPulse is designed around a simple principle:
 
-> **Note**: Opening `/ussd/` in a web browser sends a `GET` request and returns `405 Method Not Allowed`. This is expected because Africa's Talking communicates strictly via `POST`.
+> A factory worker should be able to report a machine problem without needing a smartphone or internet connection.
 
-To connect to Africa's Talking Sandbox:
-1. Expose your local port via ngrok:
-   ```bash
-   ngrok http 8000
-   ```
-2. Copy your forwarding URL (e.g. `https://your-domain.ngrok-free.app`).
-3. Set your USSD Callback URL in the Africa's Talking Dashboard to:
-   ```text
-   https://your-domain.ngrok-free.app/ussd/
-   ```
-
----
-
-### 📲 4. SMS Delivery Callback (Optional)
-
-Africa's Talking sends delivery status reports to:
-```text
-POST http://localhost:8000/sms/delivery/
-```
-
-To receive real-time delivery status updates, configure the SMS Delivery Report URL in your Africa's Talking Dashboard to point to your ngrok URL:
-```text
-https://your-domain.ngrok-free.app/sms/delivery/
-```
-
-Tracked delivery states: `Success`, `Sent`, `Failed`, `Rejected`.
-
-> **Note**: `Success`/`Delivered` means the network accepted delivery — it does NOT confirm the technician read the SMS.
-
----
-
-## 👷 Technician Assignment Workflow
-
-When a supervisor assigns a fault via the dashboard:
-
-1. The fault status transitions from `OPEN` → `ASSIGNED`.
-2. An SMS is sent to the assigned technician's registered phone number:
-   ```text
-   FactoryPulse
-
-   Fault #4 has been assigned to you.
-
-   Machine: Packaging Machine
-   Problem: Overheating
-   Severity: HIGH
-
-   Please review this task.
-   ```
-3. If SMS dispatch fails, the assignment is **never** rolled back — the technician remains assigned and the failure is logged.
-
-### Status Workflow
+By combining:
 
 ```text
-OPEN → ASSIGNED → IN_PROGRESS → RESOLVED
-  ↑       │            │
-  └───────┴────────────┘  (Reopen)
+USSD
+ +
+SMS
+ +
+Django
+ +
+Database
+ +
+Supervisor Dashboard
 ```
 
----
+FactoryPulse creates a practical maintenance communication workflow for manufacturing environments.
 
-## 🧪 Testing Coverage
+The solution is designed to be:
 
-The automated test suite (`python manage.py test`) verifies:
-- **USSD flows**: Initial menus, machine selection, problem selection, custom text descriptions, severity grading, confirmation, cancellation, and credential protection.
-- **Service logic**: Input resolvers, status transition validations, user isolation, and stats calculation.
-- **Telegram bot**: Handlers, session contexts, user isolation, button formatting, and polling configuration.
-- **Supervisor dashboard**: Authorization barriers, staff permissions, status workflow enforcement, search/filter queries, machine CRUD, and technician assignment.
-- **SMS service**: Outgoing SMS dispatch, phone masking, API failure handling, assignment-SMS integration, delivery webhook responses, and mock isolation.
-
----
-
-## 🔧 Known Issues & Notes
-
-### Python 3.14 SSL Compatibility
-The `africastalking` Python SDK uses `requests`/`urllib3`, which has an SSL context incompatibility on **Python 3.14 + OpenSSL 3.0.18** (`WRONG_VERSION_NUMBER` error when connecting to `api.sandbox.africastalking.com`). FactoryPulse works around this by using Python's stdlib `http.client.HTTPSConnection` to call the Africa's Talking REST API directly, bypassing the SDK's HTTP layer. This is transparent and requires no user action.
+* **Reusable** across different factories
+* **Configurable** with factory-specific machines and technicians
+* **Deployable** as a web application
+* **Integrated** with Africa's Talking communication APIs
+* **Presentable** through a dedicated supervisor dashboard
+* **Extendable** toward a commercial manufacturing SaaS platform
 
 ---
 
-## 🗺️ Roadmap
+## 📈 Expected Impact
 
-- [x] Django backend & SQLite persistence
-- [x] Africa's Talking-compatible USSD endpoint (`POST /ussd/`)
-- [x] Shared core business logic service layer
-- [x] Telegram development bot interface
-- [x] Protected Supervisor Dashboard with KPI metrics
-- [x] Custom supervisor login portal
-- [x] Machine management & operational tracking
-- [x] Fault status workflow state machine
-- [x] Technician model & assignment workflow
-- [x] SMS notifications for technicians (Africa's Talking SMS)
-- [x] SMS delivery status callback endpoint
-- [ ] Inbound SMS commands (ACCEPT, START, RESOLVE)
-- [ ] Maintenance resolution analytics & downtime reports
-- [ ] Production cloud deployment
+FactoryPulse aims to improve:
+
+* Speed of machine fault reporting
+* Maintenance team coordination
+* Supervisor visibility
+* Response time
+* Maintenance tracking
+* Downtime monitoring
+* Centralized operational records
+
+The system provides measurable information that can help factories understand maintenance performance and machine downtime.
 
 ---
 
-## 🏆 Vision
+## 💰 Business Potential
 
-> **Report problems faster. Respond sooner. Keep production moving.**
+FactoryPulse can be developed as a SaaS solution for manufacturing organizations.
+
+A factory could subscribe based on factors such as:
+
+* Number of machines
+* Number of technicians
+* Number of fault reports
+* Number of factory locations
+
+The platform can be configured for different factories without rebuilding the core system.
+
+---
+
+## 🗺️ Future Development
+
+Potential future improvements include:
+
+* Production deployment
+* Advanced downtime analytics
+* Critical-fault escalation
+* Preventive maintenance scheduling
+* Technician performance analytics
+* Multi-factory management
+* Mobile technician interface
+* Maintenance reports
+* Enterprise integrations
+
+---
+
+## 👨‍💻 Development
+
+FactoryPulse follows a modular Django structure separating:
+
+```text
+Models
+   ↓
+Services / Business Logic
+   ↓
+Views / API Callbacks
+   ↓
+Templates / Dashboard
+   ↓
+External Communication
+```
+
+Business logic is kept in service functions where possible so that it can be tested independently from the user interface.
+
+---
+
+## 🤝 Contributors
+
+FactoryPulse is developed as a team project.
+
+When contributing:
+
+1. Create a feature branch.
+2. Make focused changes.
+3. Add or update tests for new functionality.
+4. Run the test suite before submitting changes.
+5. Do not commit `.env` or API credentials.
+6. Keep business logic in the appropriate service layer.
+7. Avoid changing unrelated functionality.
+8. Use clear commit messages.
+
+Example:
+
+```bash
+git checkout -b feature/your-feature
+```
+
+Run:
+
+```bash
+python manage.py check
+python manage.py test
+```
+
+before pushing changes.
+
+---
+
+## 📄 License
+
+This project was developed as a manufacturing technology hackathon project.
+
+---
+
+# FactoryPulse 🏭
+
+### Report problems faster. Respond sooner. Keep production moving.
+
+```
