@@ -157,6 +157,14 @@ def ussd_callback(request):
         )
 
 
+def _mask_phone(phone: str) -> str:
+    """Returns a safely masked phone number, e.g. +234*******678"""
+    phone = (phone or '').strip()
+    if len(phone) <= 4:
+        return '****'
+    return phone[:3] + '*' * (len(phone) - 7) + phone[-4:]
+
+
 @csrf_exempt
 @require_POST
 def sms_delivery_callback(request):
@@ -177,16 +185,17 @@ def sms_delivery_callback(request):
     status = request.POST.get('status', 'unknown')
     phone = request.POST.get('phoneNumber', 'unknown')
     failure_reason = request.POST.get('failureReason', '')
+    masked_phone = _mask_phone(phone)
 
     if status.lower() in ('success', 'delivered'):
-        logger.info(f"SMS delivery confirmed: msg_id={msg_id}, phone={phone}")
+        logger.info(f"SMS delivery confirmed: msg_id={msg_id}, phone={masked_phone}")
     elif failure_reason:
         logger.warning(
-            f"SMS delivery failed: msg_id={msg_id}, phone={phone}, "
+            f"SMS delivery failed: msg_id={msg_id}, phone={masked_phone}, "
             f"status={status}, reason={failure_reason}"
         )
     else:
-        logger.info(f"SMS delivery update: msg_id={msg_id}, phone={phone}, status={status}")
+        logger.info(f"SMS delivery update: msg_id={msg_id}, phone={masked_phone}, status={status}")
 
     return HttpResponse("OK", status=200, content_type='text/plain')
 
@@ -204,12 +213,13 @@ def sms_incoming_callback(request):
       - text  : SMS message body (e.g. "ACCEPT 9", "START 9", "RESOLVE 9")
       - date  : Timestamp
       - id    : Unique message ID
-    """
+      """
     from_phone = request.POST.get('from', '').strip()
     text = request.POST.get('text', '').strip()
     msg_id = request.POST.get('id', '')
+    masked_from = _mask_phone(from_phone)
 
-    logger.info(f"Incoming SMS received: id={msg_id}, from={from_phone}, text='{text}'")
+    logger.info(f"Incoming SMS received: id={msg_id}, from={masked_from}, text='{text}'")
 
     from .services import process_incoming_technician_sms
     result = process_incoming_technician_sms(sender_phone=from_phone, text=text)

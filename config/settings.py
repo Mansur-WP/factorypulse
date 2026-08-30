@@ -23,13 +23,63 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+from django.core.exceptions import ImproperlyConfigured
+
+# Environment detection: 'production' or 'development' (default)
+DJANGO_ENV = os.environ.get('DJANGO_ENV', 'development').strip().lower()
+env_debug = os.environ.get('DEBUG')
+
+if DJANGO_ENV == 'production':
+    DEBUG = False
+    if env_debug and env_debug.lower() not in ('false', '0'):
+        raise ImproperlyConfigured("DEBUG cannot be set to True in a production environment (DJANGO_ENV=production).")
+else:
+    # Local development: default to True
+    DEBUG = env_debug.lower() in ('true', '1', 'yes') if env_debug else True
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-factorypulse-key-not-for-prod')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY environment variable is required in production.")
+    else:
+        SECRET_KEY = 'django-insecure-dev-factorypulse-key-not-for-prod'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# ALLOWED_HOSTS configuration
+allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', '')
+if allowed_hosts_raw:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_raw.split(',') if host.strip()]
+else:
+    ALLOWED_HOSTS = []
 
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '*').split(',') if host.strip()]
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['*']
+
+if not DEBUG:
+    if not ALLOWED_HOSTS:
+        raise ImproperlyConfigured("ALLOWED_HOSTS cannot be empty in production.")
+    if '*' in ALLOWED_HOSTS:
+        raise ImproperlyConfigured("ALLOWED_HOSTS cannot contain wildcard '*' in production.")
+
+# Production Security/HTTPS Settings
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'same-origin'
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# CSRF Trusted Origins (dynamic from environment)
+csrf_trusted_raw = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_trusted_raw:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_trusted_raw.split(',') if origin.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
 
 # Application definition
@@ -120,6 +170,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
