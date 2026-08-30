@@ -91,9 +91,14 @@ class DashboardAuthTests(TestCase):
         self.assertIn('Invalid username or password', response.content.decode('utf-8'))
 
     def test_logout_view(self):
-        """Logging out clears session and redirects to custom login page."""
+        """Logging out clears session and redirects to custom login page via POST."""
         self.client.login(username='staff', password='password123')
-        response = self.client.get(reverse('dashboard_logout'))
+        # GET should be rejected with 405 Method Not Allowed
+        get_response = self.client.get(reverse('dashboard_logout'))
+        self.assertEqual(get_response.status_code, 405)
+
+        # POST should log out successfully
+        response = self.client.post(reverse('dashboard_logout'))
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('dashboard_login'))
 

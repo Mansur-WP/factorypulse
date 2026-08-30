@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: factorypulse-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-factorypulse_db}
+      POSTGRES_USER: ${POSTGRES_USER:-factorypulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-factorypulse_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-factorypulse} -d $${POSTGRES_DB:-factorypulse_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: factorypulse-web
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-factorypulse}:${POSTGRES_PASSWORD:-factorypulse_pass}@db:5432/${POSTGRES_DB:-factorypulse_db}
+      - DJANGO_ENV=${DJANGO_ENV:-development}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-dev-key}
+      - DEBUG=${DEBUG:-True}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+      - AFRICASTALKING_USERNAME=${AFRICASTALKING_USERNAME:-sandbox}
+      - AFRICASTALKING_API_KEY=${AFRICASTALKING_API_KEY:-}
+      - AFRICASTALKING_WEBHOOK_SECRET=${AFRICASTALKING_WEBHOOK_SECRET:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -75,7 +75,10 @@
                     <span>👤</span>
                     <span>{{ request.user.get_full_name|default:request.user.username }}</span>
                 </div>
-                <a href="{% url 'dashboard_logout' %}" class="btn-logout">Logout</a>
+                <form action="{% url 'dashboard_logout' %}" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-logout" style="cursor: pointer; border: 1px solid #fecaca; background-color: #fef2f2;">Logout</button>
+                </form>
             </div>
         </header>
 

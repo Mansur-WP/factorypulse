@@ -111,18 +111,27 @@ def create_fault_report(
 ) -> FaultReport:
     """
     Creates and persists a FaultReport in the database.
+    Inputs are sanitized and truncated to model max_length boundaries.
     """
+    clean_machine = (machine or '').strip()[:100]
+    clean_problem = (problem or '').strip()[:255]
+    clean_severity = (severity or '').strip()[:20]
+    clean_phone = (phone_number or '').strip()[:20]
+    clean_tg_id = str(telegram_user_id or '').strip()[:50]
+    clean_tg_user = (telegram_username or '').strip()[:100]
+    clean_status = (status or FaultReport.STATUS_OPEN).strip()[:20]
+
     fault = FaultReport.objects.create(
-        machine=machine,
-        problem=problem,
-        severity=severity,
-        phone_number=phone_number or '',
-        telegram_user_id=str(telegram_user_id) if telegram_user_id else '',
-        telegram_username=telegram_username or '',
-        status=status or FaultReport.STATUS_OPEN,
+        machine=clean_machine,
+        problem=clean_problem,
+        severity=clean_severity,
+        phone_number=clean_phone,
+        telegram_user_id=clean_tg_id,
+        telegram_username=clean_tg_user,
+        status=clean_status,
     )
 
-    actor = f"Worker ({phone_number})" if phone_number else (f"Telegram (@{telegram_username})" if telegram_username else "Worker")
+    actor = f"Worker ({clean_phone})" if clean_phone else (f"Telegram (@{clean_tg_user})" if clean_tg_user else "Worker")
     FaultStatusHistory.objects.create(
         fault=fault,
         status=fault.status,
@@ -352,8 +361,8 @@ def process_incoming_technician_sms(sender_phone: str, text: str) -> dict:
     """
     from .sms_service import send_sms
 
-    clean_phone = (sender_phone or '').strip()
-    clean_text = (text or '').strip()
+    clean_phone = (sender_phone or '').strip()[:20]
+    clean_text = (text or '').strip()[:500]
 
     # 1. Look up technician
     technician = _find_technician_by_phone(clean_phone)
@@ -381,7 +390,9 @@ def process_incoming_technician_sms(sender_phone: str, text: str) -> dict:
 
     try:
         fault_id = int(parts[1])
-    except ValueError:
+        if fault_id <= 0 or fault_id > 2147483647:
+            raise ValueError("Fault ID out of range.")
+    except (ValueError, OverflowError):
         reply_msg = "FactoryPulse: Invalid command. Use ACCEPT <fault ID>, START <fault ID>, or RESOLVE <fault ID>."
         send_sms(clean_phone, reply_msg)
         return {
@@ -393,7 +404,7 @@ def process_incoming_technician_sms(sender_phone: str, text: str) -> dict:
     # 3. Look up fault
     try:
         fault = FaultReport.objects.get(pk=fault_id)
-    except FaultReport.DoesNotExist:
+    except (FaultReport.DoesNotExist, ValueError, OverflowError):
         reply_msg = f"FactoryPulse: Fault #{fault_id} not found."
         send_sms(clean_phone, reply_msg)
         return {

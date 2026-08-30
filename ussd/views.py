@@ -78,7 +78,7 @@ def ussd_callback(request):
 
                 elif step == 'DESCRIBE_PROBLEM':
                     if token:
-                        problem = token
+                        problem = token.strip()[:255]
                         step = 'SELECT_SEVERITY'
                         invalid_flag = False
                     else:
@@ -171,33 +171,32 @@ def sms_delivery_callback(request):
     """
     Africa's Talking SMS Delivery Status callback.
     POST /sms/delivery/
-
-    Africa's Talking will POST:
-      - id          : Unique message ID
-      - status      : e.g. "Success", "Failed", "Sent", "Rejected"
-      - phoneNumber : Recipient phone number
-      - failureReason (optional): Reason for failure
-
-    We log the delivery event. We do not claim that "Success" means the
-    technician read the SMS — only that the network accepted delivery.
     """
-    msg_id = request.POST.get('id', 'unknown')
-    status = request.POST.get('status', 'unknown')
-    phone = request.POST.get('phoneNumber', 'unknown')
-    failure_reason = request.POST.get('failureReason', '')
-    masked_phone = _mask_phone(phone)
+    try:
+        msg_id = request.POST.get('id', 'unknown')
+        status = request.POST.get('status', 'unknown')
+        phone = request.POST.get('phoneNumber', 'unknown')
+        failure_reason = request.POST.get('failureReason', '')
+        masked_phone = _mask_phone(phone)
 
-    if status.lower() in ('success', 'delivered'):
-        logger.info(f"SMS delivery confirmed: msg_id={msg_id}, phone={masked_phone}")
-    elif failure_reason:
-        logger.warning(
-            f"SMS delivery failed: msg_id={msg_id}, phone={masked_phone}, "
-            f"status={status}, reason={failure_reason}"
-        )
-    else:
-        logger.info(f"SMS delivery update: msg_id={msg_id}, phone={masked_phone}, status={status}")
+        if status.lower() in ('success', 'delivered'):
+            logger.info(f"SMS delivery confirmed: msg_id={msg_id}, phone={masked_phone}")
+        elif failure_reason:
+            logger.warning(
+                f"SMS delivery failed: msg_id={msg_id}, phone={masked_phone}, "
+                f"status={status}, reason={failure_reason}"
+            )
+        else:
+            logger.info(f"SMS delivery update: msg_id={msg_id}, phone={masked_phone}, status={status}")
 
-    return HttpResponse("OK", status=200, content_type='text/plain')
+        return HttpResponse("OK", status=200, content_type='text/plain')
+    except Exception as e:
+        logger.exception(f"SMS delivery callback error: {e}")
+        return HttpResponse("OK", status=200, content_type='text/plain')
+
+
+import hmac
+from django.conf import settings
 
 
 @csrf_exempt
@@ -206,25 +205,34 @@ def sms_incoming_callback(request):
     """
     Africa's Talking Incoming SMS webhook endpoint.
     POST /sms/incoming/
+    """
+    try:
+        webhook_secret = getattr(settings, 'AFRICASTALKING_WEBHOOK_SECRET', '')
+        if webhook_secret:
+            provided_secret = (
+                request.GET.get('secret') or
+                request.headers.get('X-AT-Security-Token') or
+                request.POST.get('secret') or
+                ''
+            ).strip()
+            if not hmac.compare_digest(provided_secret, webhook_secret):
+                logger.warning("[SMS] Unauthorized incoming SMS webhook attempt: invalid or missing secret token.")
+                return HttpResponse("Forbidden: Invalid webhook secret token.", status=403, content_type='text/plain')
 
-    Africa's Talking POSTs:
-      - from  : Sender phone number (e.g. "+2349012345678")
-      - to    : Shortcode / receiver number
-      - text  : SMS message body (e.g. "ACCEPT 9", "START 9", "RESOLVE 9")
-      - date  : Timestamp
-      - id    : Unique message ID
-      """
-    from_phone = request.POST.get('from', '').strip()
-    text = request.POST.get('text', '').strip()
-    msg_id = request.POST.get('id', '')
-    masked_from = _mask_phone(from_phone)
+        from_phone = request.POST.get('from', '').strip()
+        text = request.POST.get('text', '').strip()
+        msg_id = request.POST.get('id', '')
+        masked_from = _mask_phone(from_phone)
 
-    logger.info(f"Incoming SMS received: id={msg_id}, from={masked_from}, text='{text}'")
+        logger.info(f"Incoming SMS received: id={msg_id}, from={masked_from}, text='{text}'")
 
-    from .services import process_incoming_technician_sms
-    result = process_incoming_technician_sms(sender_phone=from_phone, text=text)
+        from .services import process_incoming_technician_sms
+        result = process_incoming_technician_sms(sender_phone=from_phone, text=text)
 
-    logger.info(f"Incoming SMS processing result: {result.get('status')} - {result.get('reason', 'ok')}")
-    return HttpResponse("OK", status=200, content_type='text/plain')
+        logger.info(f"Incoming SMS processing result: {result.get('status')} - {result.get('reason', 'ok')}")
+        return HttpResponse("OK", status=200, content_type='text/plain')
+    except Exception as e:
+        logger.exception(f"SMS incoming callback error: {e}")
+        return HttpResponse("OK", status=200, content_type='text/plain')
 
 

@@ -8,6 +8,8 @@ using a dedicated login page.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.db.models import Q
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -20,6 +22,18 @@ from .services import (
     get_available_technicians,
     assign_fault_to_technician,
 )
+
+
+def _get_safe_next_url(request, fallback='dashboard_home') -> str:
+    """
+    Sanitizes the redirect URL to prevent Open Redirect vulnerabilities.
+    Only allows relative paths or URLs matching the current request's host.
+    """
+    next_url = request.POST.get('next') or request.GET.get('next') or ''
+    next_url = next_url.strip()
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return next_url
+    return fallback
 
 
 def supervisor_required(view_func):
@@ -37,10 +51,11 @@ def supervisor_required(view_func):
 def dashboard_login(request):
     """
     Custom login view for supervisors and staff members.
+    Safely validates next redirect parameter to prevent open redirect vulnerabilities.
     """
     if request.user.is_authenticated and request.user.is_staff:
-        next_url = request.GET.get('next') or request.POST.get('next') or 'dashboard_home'
-        return redirect(next_url)
+        safe_next = _get_safe_next_url(request)
+        return redirect(safe_next)
 
     error_message = None
     form_data = {}
@@ -48,7 +63,7 @@ def dashboard_login(request):
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
-        next_url = request.POST.get('next', '').strip() or 'dashboard_home'
+        safe_next = _get_safe_next_url(request)
         form_data = {'username': username}
 
         user = authenticate(request, username=username, password=password)
@@ -56,7 +71,7 @@ def dashboard_login(request):
         if user is not None:
             if user.is_staff:
                 login(request, user)
-                return redirect(next_url)
+                return redirect(safe_next)
             else:
                 error_message = "Access denied. Only authorized staff accounts can access the Supervisor Dashboard."
         else:
@@ -65,14 +80,16 @@ def dashboard_login(request):
     context = {
         'error_message': error_message,
         'form_data': form_data,
-        'next_url': request.GET.get('next', ''),
+        'next_url': _get_safe_next_url(request, fallback=''),
     }
     return render(request, 'ussd/dashboard_login.html', context)
 
 
+@require_POST
 def dashboard_logout(request):
     """
     Logs out the supervisor and redirects to the dashboard login page.
+    Requires POST to protect against CSRF logout attacks.
     """
     logout(request)
     return redirect('dashboard_login')
@@ -164,7 +181,8 @@ def dashboard_fault_detail(request, pk):
                 messages.success(request, f"Fault #{fault.id} assigned to {tech_name} successfully.")
                 return redirect('dashboard_fault_detail', pk=fault.id)
             except ValidationError as e:
-                messages.error(request, e.message)
+                err_text = e.messages[0] if hasattr(e, 'messages') and e.messages else (e.message if hasattr(e, 'message') else str(e))
+                messages.error(request, err_text)
                 return redirect('dashboard_fault_detail', pk=fault.id)
 
         # Status transition action
@@ -174,7 +192,8 @@ def dashboard_fault_detail(request, pk):
             messages.success(request, f"Fault status updated to {new_status} successfully.")
             return redirect('dashboard_fault_detail', pk=fault.id)
         except ValidationError as e:
-            messages.error(request, e.message)
+            err_text = e.messages[0] if hasattr(e, 'messages') and e.messages else (e.message if hasattr(e, 'message') else str(e))
+            messages.error(request, err_text)
             return redirect('dashboard_fault_detail', pk=fault.id)
 
     from .services import calculate_fault_downtime
@@ -189,7 +208,6 @@ def dashboard_fault_detail(request, pk):
         'downtime_info': downtime_info,
     }
     return render(request, 'ussd/dashboard_fault_detail.html', context)
-
 
 
 @supervisor_required
@@ -234,7 +252,7 @@ def dashboard_machines(request):
 @supervisor_required
 def dashboard_machine_add(request):
     """
-    Registers a new machine in the system.
+    Registers a new machine in the system with server-side field length and choice validation.
     """
     form_errors = {}
     form_data = {}
@@ -243,10 +261,16 @@ def dashboard_machine_add(request):
         name = request.POST.get('name', '').strip()
         status = request.POST.get('status', '').strip()
 
+        valid_statuses = [choice[0] for choice in Machine.STATUS_CHOICES]
+        if status not in valid_statuses:
+            status = Machine.STATUS_OPERATIONAL
+
         form_data = {'name': name, 'status': status}
 
         if not name:
             form_errors['name'] = ['Name field is required.']
+        elif len(name) > 100:
+            form_errors['name'] = ['Machine name cannot exceed 100 characters.']
         elif Machine.objects.filter(name__iexact=name).exists():
             form_errors['name'] = ['A machine with this name already exists.']
 
@@ -265,7 +289,7 @@ def dashboard_machine_add(request):
 @supervisor_required
 def dashboard_machine_edit(request, pk):
     """
-    Edits the name or operational status of an existing machine.
+    Edits the name or operational status of an existing machine with server-side validation.
     """
     machine = get_object_or_404(Machine, pk=pk)
     form_errors = {}
@@ -274,8 +298,14 @@ def dashboard_machine_edit(request, pk):
         name = request.POST.get('name', '').strip()
         status = request.POST.get('status', '').strip()
 
+        valid_statuses = [choice[0] for choice in Machine.STATUS_CHOICES]
+        if status not in valid_statuses:
+            status = machine.status
+
         if not name:
             form_errors['name'] = ['Name field is required.']
+        elif len(name) > 100:
+            form_errors['name'] = ['Machine name cannot exceed 100 characters.']
         elif Machine.objects.filter(name__iexact=name).exclude(pk=machine.pk).exists():
             form_errors['name'] = ['A machine with this name already exists.']
 

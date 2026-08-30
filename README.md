@@ -360,23 +360,41 @@ http://127.0.0.1:8000/
 
 ---
 
-## 📦 Docker
+## 📦 Docker & Persistent PostgreSQL
 
-FactoryPulse is prepared for containerized deployment.
+FactoryPulse is fully containerized with persistent PostgreSQL database support via Docker Compose.
 
-Build the image:
+### Quick Start with Docker Compose (Recommended)
 
-```bash
-docker build -t factorypulse .
-```
-
-Run the container:
+Start the Web application and PostgreSQL database:
 
 ```bash
-docker run --env-file .env -p 8000:8000 factorypulse
+docker compose up -d --build
 ```
 
-The container runs FactoryPulse using Gunicorn.
+This automatically:
+- Starts a PostgreSQL database with a persistent named volume (`postgres_data`)
+- Runs database migrations on container launch
+- Collects static assets
+- Starts FactoryPulse via Gunicorn at `http://localhost:8000/`
+
+Create a supervisor user in the running container:
+
+```bash
+docker compose exec web python manage.py createsuperuser
+```
+
+View container logs:
+
+```bash
+docker compose logs -f web
+```
+
+Stop services:
+
+```bash
+docker compose down
+```
 
 ---
 
