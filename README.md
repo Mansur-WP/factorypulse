@@ -522,4 +522,3 @@ This project was developed as a manufacturing technology hackathon project.
 
 ### Report problems faster. Respond sooner. Keep production moving.
 
-```
