@@ -180,11 +180,14 @@ def get_machine_statuses() -> List[Dict[str, str]]:
         ]
 
 
-def get_available_technicians() -> QuerySet:
+def get_available_technicians(factory=None) -> QuerySet:
     """
-    Returns all registered technicians.
+    Returns registered technicians, optionally filtered by factory.
     """
-    return Technician.objects.select_related('user').all()
+    qs = Technician.objects.select_related('user').all()
+    if factory:
+        qs = qs.filter(factory=factory)
+    return qs
 
 
 def assign_fault_to_technician(
@@ -219,6 +222,12 @@ def assign_fault_to_technician(
     # Verify technician profile exists
     if not hasattr(tech_user, 'technician_profile'):
         raise ValidationError(f"User '{tech_user.username}' is not registered as a technician.")
+
+    # If fault is bound to a factory, ensure technician belongs to the same factory
+    if fault.factory and hasattr(tech_user, 'technician_profile'):
+        tech_factory = tech_user.technician_profile.factory
+        if tech_factory and tech_factory != fault.factory:
+            raise ValidationError("Technician does not belong to the fault's factory.")
 
     fault.assigned_to = tech_user
     if notes:
@@ -464,34 +473,33 @@ def process_incoming_technician_sms(sender_phone: str, text: str) -> dict:
     }
 
 
-def get_dashboard_stats() -> dict:
+def get_dashboard_stats(factory=None) -> dict:
     """
-    Returns comprehensive fault statistics and intelligence for the dashboard.
-    Summary cards:
-      - Total Faults
-      - Open Faults
-      - Assigned Faults
-      - Accepted Faults
-      - In Progress
-      - Critical Faults
-      - Resolved Today
+    Returns comprehensive fault statistics and intelligence for the dashboard,
+    optionally filtered by factory.
     """
-    total = FaultReport.objects.count()
-    open_count = FaultReport.objects.filter(status=FaultReport.STATUS_OPEN).count()
-    assigned_count = FaultReport.objects.filter(status=FaultReport.STATUS_ASSIGNED).count()
-    accepted_count = FaultReport.objects.filter(status=FaultReport.STATUS_ACCEPTED).count()
-    in_progress_count = FaultReport.objects.filter(status=FaultReport.STATUS_IN_PROGRESS).count()
-    critical_count = FaultReport.objects.filter(severity='Critical').count()
-    resolved_count = FaultReport.objects.filter(status=FaultReport.STATUS_RESOLVED).count()
+    qs = FaultReport.objects.all()
+    if factory:
+        qs = qs.filter(factory=factory)
+
+    total = qs.count()
+    open_count = qs.filter(status=FaultReport.STATUS_OPEN).count()
+    assigned_count = qs.filter(status=FaultReport.STATUS_ASSIGNED).count()
+    accepted_count = qs.filter(status=FaultReport.STATUS_ACCEPTED).count()
+    in_progress_count = qs.filter(status=FaultReport.STATUS_IN_PROGRESS).count()
+    critical_count = qs.filter(severity='Critical').count()
+    resolved_count = qs.filter(status=FaultReport.STATUS_RESOLVED).count()
 
     today = timezone.now().date()
 
-    # Calculate Resolved Today count via FaultStatusHistory or created_at
-    resolved_today_ids = FaultStatusHistory.objects.filter(
+    history_qs = FaultStatusHistory.objects.filter(
         status=FaultReport.STATUS_RESOLVED,
         timestamp__date=today
-    ).values_list('fault_id', flat=True).distinct()
+    )
+    if factory:
+        history_qs = history_qs.filter(fault__factory=factory)
 
+    resolved_today_ids = history_qs.values_list('fault_id', flat=True).distinct()
     resolved_today = resolved_today_ids.count()
     if resolved_today == 0:
         resolved_today = FaultReport.objects.filter(

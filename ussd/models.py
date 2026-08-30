@@ -2,6 +2,36 @@ from django.db import models
 from django.conf import settings
 
 
+class Factory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class SupervisorProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='supervisor_profile',
+    )
+    factory = models.ForeignKey(
+        Factory,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='supervisors',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Supervisor {self.user.username} ({self.factory.name if self.factory else 'Global'})"
+
+
 class FaultReport(models.Model):
     STATUS_OPEN = 'OPEN'
     STATUS_ASSIGNED = 'ASSIGNED'
@@ -24,6 +54,13 @@ class FaultReport(models.Model):
         ('Critical', 'Critical'),
     ]
 
+    factory = models.ForeignKey(
+        Factory,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='fault_reports',
+    )
     phone_number = models.CharField(max_length=20, blank=True, default='')
     telegram_user_id = models.CharField(max_length=50, blank=True, default='', db_index=True)
     telegram_username = models.CharField(max_length=100, blank=True, default='')
@@ -59,6 +96,13 @@ class Machine(models.Model):
         (STATUS_OFFLINE, 'Offline'),
     ]
 
+    factory = models.ForeignKey(
+        Factory,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='machines',
+    )
     name = models.CharField(max_length=100, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPERATIONAL)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -75,6 +119,13 @@ class Technician(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='technician_profile',
+    )
+    factory = models.ForeignKey(
+        Factory,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='technicians',
     )
     name = models.CharField(max_length=150)
     phone_number = models.CharField(max_length=20, blank=True, default='')

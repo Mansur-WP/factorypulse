@@ -95,13 +95,31 @@ def dashboard_logout(request):
     return redirect('dashboard_login')
 
 
+def _get_supervisor_factory(user):
+    """
+    Returns the Factory instance associated with a supervisor user, if any.
+    Superusers or unassigned staff return None (global platform view).
+    """
+    if not user or not user.is_authenticated or user.is_superuser:
+        return None
+    if hasattr(user, 'supervisor_profile') and user.supervisor_profile and user.supervisor_profile.factory:
+        return user.supervisor_profile.factory
+    return None
+
+
 @supervisor_required
 def dashboard_home(request):
     """
     Dashboard homepage. Displays statistics summaries, recent reports, and recent activities.
     """
-    stats = get_dashboard_stats()
-    recent_faults = FaultReport.objects.order_by('-created_at', '-id')[:5]
+    factory = _get_supervisor_factory(request.user)
+    stats = get_dashboard_stats(factory=factory)
+
+    recent_faults = FaultReport.objects.select_related('assigned_to', 'factory')
+    if factory:
+        recent_faults = recent_faults.filter(factory=factory)
+    recent_faults = recent_faults.order_by('-created_at', '-id')[:5]
+
     recent_activity = get_recent_activity()
 
     context = {
@@ -118,12 +136,16 @@ def dashboard_faults(request):
     Displays all reported machine faults with simple search, status/severity filters,
     and assigned technician filtering.
     """
+    factory = _get_supervisor_factory(request.user)
+
     q_search = request.GET.get('q', '').strip()
     current_severity = request.GET.get('severity', '').strip()
     current_status = request.GET.get('status', '').strip()
     current_assigned = request.GET.get('assigned_to', '').strip()
 
-    faults = FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile').all()
+    faults = FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile', 'factory').all()
+    if factory:
+        faults = faults.filter(factory=factory)
 
     if q_search:
         faults = faults.filter(
@@ -143,7 +165,7 @@ def dashboard_faults(request):
     if current_assigned:
         faults = faults.filter(assigned_to_id=current_assigned)
 
-    technicians = get_available_technicians()
+    technicians = get_available_technicians(factory=factory)
 
     context = {
         'faults': faults,
@@ -161,10 +183,12 @@ def dashboard_fault_detail(request, pk):
     """
     Displays the full details of a specific fault report and handles status updates & technician assignments.
     """
-    fault = get_object_or_404(
-        FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile').prefetch_related('history'),
-        pk=pk
-    )
+    factory = _get_supervisor_factory(request.user)
+    qs = FaultReport.objects.select_related('assigned_to', 'assigned_to__technician_profile', 'factory').prefetch_related('history')
+    if factory:
+        qs = qs.filter(factory=factory)
+
+    fault = get_object_or_404(qs, pk=pk)
 
     if request.method == 'POST':
         action = request.POST.get('action', '').strip()
@@ -197,7 +221,7 @@ def dashboard_fault_detail(request, pk):
             return redirect('dashboard_fault_detail', pk=fault.id)
 
     from .services import calculate_fault_downtime
-    available_technicians = get_available_technicians()
+    available_technicians = get_available_technicians(factory=factory)
     timeline = fault.history.all().order_by('timestamp', 'id')
     downtime_info = calculate_fault_downtime(fault)
 
@@ -216,7 +240,11 @@ def dashboard_machines(request):
     Displays a list of registered machines, their current operational status,
     total faults reported, and the timestamp of their latest fault.
     """
+    factory = _get_supervisor_factory(request.user)
     machines = Machine.objects.all()
+    if factory:
+        machines = machines.filter(factory=factory)
+
     machines_data = []
 
     from .services import calculate_fault_downtime, format_duration
@@ -224,6 +252,9 @@ def dashboard_machines(request):
 
     for m in machines:
         machine_faults = FaultReport.objects.filter(machine=m.name).prefetch_related('history')
+        if factory:
+            machine_faults = machine_faults.filter(factory=factory)
+
         fault_count = machine_faults.count()
         active_fault_count = machine_faults.exclude(status=FaultReport.STATUS_RESOLVED).count()
         last_fault = machine_faults.order_by('-created_at', '-id').first()
@@ -252,8 +283,9 @@ def dashboard_machines(request):
 @supervisor_required
 def dashboard_machine_add(request):
     """
-    Registers a new machine in the system with server-side field length and choice validation.
+    Registers a new machine in the system with server-side field length, choice, and factory validation.
     """
+    factory = _get_supervisor_factory(request.user)
     form_errors = {}
     form_data = {}
 
@@ -275,7 +307,7 @@ def dashboard_machine_add(request):
             form_errors['name'] = ['A machine with this name already exists.']
 
         if not form_errors:
-            Machine.objects.create(name=name, status=status)
+            Machine.objects.create(name=name, status=status, factory=factory)
             messages.success(request, f"Machine '{name}' registered successfully.")
             return redirect('dashboard_machines')
 
@@ -291,7 +323,12 @@ def dashboard_machine_edit(request, pk):
     """
     Edits the name or operational status of an existing machine with server-side validation.
     """
-    machine = get_object_or_404(Machine, pk=pk)
+    factory = _get_supervisor_factory(request.user)
+    qs = Machine.objects.all()
+    if factory:
+        qs = qs.filter(factory=factory)
+
+    machine = get_object_or_404(qs, pk=pk)
     form_errors = {}
 
     if request.method == 'POST':
