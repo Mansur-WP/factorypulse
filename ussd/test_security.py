@@ -160,7 +160,10 @@ class Phase1CSecurityFixTests(TestCase):
 
     def test_machine_add_invalid_status_fallback(self):
         """Verify that submitting an invalid status during machine registration falls back to Operational."""
+        from ussd.models import Factory, SupervisorProfile
+        factory = Factory.objects.create(name='Test Factory For Phase1C')
         user = User.objects.create_user(username='staff', password='pass', is_staff=True)
+        SupervisorProfile.objects.create(user=user, factory=factory)
         self.client.force_login(user)
 
         response = self.client.post(reverse('dashboard_machine_add'), {
@@ -173,14 +176,22 @@ class Phase1CSecurityFixTests(TestCase):
 
 
 from ussd.models import Factory, SupervisorProfile, FaultStatusHistory
+from ussd.services import assign_fault_to_technician
+from django.core.exceptions import ValidationError
+from unittest.mock import patch
 
+@patch('ussd.sms_service.send_sms')
+@patch('ussd.sms_service.send_technician_assignment_sms')
 class Phase3AccessControlTests(TestCase):
-    """Focused unit tests for Phase 3 role-based access control and factory isolation."""
+    """Focused unit tests for Phase 3 role-based access control, unassigned staff denial, and factory isolation."""
 
     def setUp(self):
         self.client = Client()
         self.factory_a = Factory.objects.create(name="Factory Alpha")
         self.factory_b = Factory.objects.create(name="Factory Beta")
+
+        # Superuser (Global access)
+        self.superuser = User.objects.create_superuser(username='superadmin', password='password123', email='admin@factory.com')
 
         # Factory A Supervisor
         self.sup_user_a = User.objects.create_user(username='sup_alpha', password='password123', is_staff=True)
@@ -190,6 +201,9 @@ class Phase3AccessControlTests(TestCase):
         self.sup_user_b = User.objects.create_user(username='sup_beta', password='password123', is_staff=True)
         SupervisorProfile.objects.create(user=self.sup_user_b, factory=self.factory_b)
 
+        # Unassigned Staff (is_staff=True, is_superuser=False, no factory)
+        self.unassigned_staff = User.objects.create_user(username='staff_unassigned', password='password123', is_staff=True)
+
         # Technician A (Factory A)
         self.tech_user_a = User.objects.create_user(username='tech_alpha', password='password123', is_staff=False)
         self.tech_a = Technician.objects.create(user=self.tech_user_a, name='Tech Alpha', phone_number='+2348111111111', factory=self.factory_a)
@@ -198,7 +212,22 @@ class Phase3AccessControlTests(TestCase):
         self.tech_user_b = User.objects.create_user(username='tech_beta', password='password123', is_staff=False)
         self.tech_b = Technician.objects.create(user=self.tech_user_b, name='Tech Beta', phone_number='+2348222222222', factory=self.factory_b)
 
+        # Unassigned Technician (No factory)
+        self.tech_user_unassigned = User.objects.create_user(username='tech_unassigned', password='password123', is_staff=False)
+        self.tech_unassigned = Technician.objects.create(user=self.tech_user_unassigned, name='Tech Unassigned', phone_number='+2348333333333', factory=None)
+
+        # Machines
+        self.machine_a = Machine.objects.create(name="Alpha Generator", status="OPERATIONAL", factory=self.factory_a)
+        self.machine_b = Machine.objects.create(name="Beta Generator", status="OPERATIONAL", factory=self.factory_b)
+
         # Faults
+        self.fault_open_a = FaultReport.objects.create(
+            machine="Alpha Machine 1",
+            problem="Not working",
+            severity="High",
+            status=FaultReport.STATUS_OPEN,
+            factory=self.factory_a
+        )
         self.fault_a = FaultReport.objects.create(
             machine="Alpha Machine 1",
             problem="Overheating",
@@ -216,66 +245,107 @@ class Phase3AccessControlTests(TestCase):
             factory=self.factory_b
         )
 
-    def test_unauthorized_technician_sms_sender(self):
+    def test_unassigned_staff_cannot_access_dashboard(self, mock_assign_sms, mock_sms):
+        """1. Verify unassigned non-superuser staff cannot access dashboard home."""
+        self.client.force_login(self.unassigned_staff)
+        response = self.client.get(reverse('dashboard_home'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/dashboard/login/', response.url)
+
+    def test_unassigned_staff_cannot_view_faults(self, mock_assign_sms, mock_sms):
+        """2. Verify unassigned non-superuser staff cannot view faults list or detail."""
+        self.client.force_login(self.unassigned_staff)
+        res_list = self.client.get(reverse('dashboard_faults'))
+        self.assertEqual(res_list.status_code, 302)
+
+        res_detail = self.client.get(reverse('dashboard_fault_detail', kwargs={'pk': self.fault_a.id}))
+        self.assertEqual(res_detail.status_code, 302)
+
+    def test_unassigned_staff_cannot_view_machines(self, mock_assign_sms, mock_sms):
+        """3. Verify unassigned non-superuser staff cannot view machines list."""
+        self.client.force_login(self.unassigned_staff)
+        response = self.client.get(reverse('dashboard_machines'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_unassigned_staff_cannot_edit_machines(self, mock_assign_sms, mock_sms):
+        """4. Verify unassigned non-superuser staff cannot create or edit machines."""
+        self.client.force_login(self.unassigned_staff)
+        res_add = self.client.post(reverse('dashboard_machine_add'), {'name': 'Illegal Machine 99', 'status': 'OPERATIONAL'})
+        self.assertEqual(res_add.status_code, 302)
+        self.assertFalse(Machine.objects.filter(name='Illegal Machine 99').exists())
+
+        res_edit = self.client.post(reverse('dashboard_machine_edit', kwargs={'pk': self.machine_a.id}), {'name': 'Hacked Name', 'status': 'OFFLINE'})
+        self.assertEqual(res_edit.status_code, 302)
+        self.machine_a.refresh_from_db()
+        self.assertNotEqual(self.machine_a.name, 'Hacked Name')
+
+    def test_unassigned_technician_cannot_be_assigned_to_factory_fault(self, mock_assign_sms, mock_sms):
+        """5. Verify an unassigned technician (factory=None) cannot be assigned to a factory fault."""
+        with self.assertRaises(ValidationError) as ctx:
+            assign_fault_to_technician(self.fault_open_a.id, self.tech_user_unassigned)
+        self.assertIn("does not belong to factory", str(ctx.exception))
+
+    def test_technician_from_another_factory_cannot_be_assigned(self, mock_assign_sms, mock_sms):
+        """6. Verify a technician from Factory B cannot be assigned to Factory A's fault."""
+        with self.assertRaises(ValidationError) as ctx:
+            assign_fault_to_technician(self.fault_open_a.id, self.tech_user_b)
+        self.assertIn("does not belong to factory", str(ctx.exception))
+
+    def test_same_factory_technician_can_be_assigned(self, mock_assign_sms, mock_sms):
+        """7. Verify a technician from Factory A can be successfully assigned to Factory A's fault."""
+        fault = assign_fault_to_technician(self.fault_open_a.id, self.tech_user_a)
+        self.assertEqual(fault.assigned_to, self.tech_user_a)
+        self.assertEqual(fault.status, FaultReport.STATUS_ASSIGNED)
+
+    def test_superuser_retains_global_access(self, mock_assign_sms, mock_sms):
+        """8. Verify superusers retain global access across all dashboard views."""
+        self.client.force_login(self.superuser)
+
+        res_home = self.client.get(reverse('dashboard_home'))
+        self.assertEqual(res_home.status_code, 200)
+
+        res_faults = self.client.get(reverse('dashboard_faults'))
+        self.assertEqual(res_faults.status_code, 200)
+
+        res_detail = self.client.get(reverse('dashboard_fault_detail', kwargs={'pk': self.fault_b.id}))
+        self.assertEqual(res_detail.status_code, 200)
+
+        res_machines = self.client.get(reverse('dashboard_machines'))
+        self.assertEqual(res_machines.status_code, 200)
+
+    def test_unauthorized_technician_sms_sender(self, mock_assign_sms, mock_sms):
         """Verify that SMS commands from an unregistered phone number are rejected."""
         res = process_incoming_technician_sms('+2349999999999', f'ACCEPT {self.fault_a.id}')
         self.assertEqual(res['status'], 'error')
         self.assertEqual(res['reason'], 'technician_not_found')
 
-    def test_technician_modify_other_technician_fault(self):
+    def test_technician_modify_other_technician_fault(self, mock_assign_sms, mock_sms):
         """Verify that a technician cannot modify a fault assigned to another technician."""
-        # Tech A trying to resolve Tech B's fault
         res = process_incoming_technician_sms(self.tech_a.phone_number, f'ACCEPT {self.fault_b.id}')
         self.assertEqual(res['status'], 'error')
         self.assertEqual(res['reason'], 'unauthorized_fault')
 
-    def test_worker_cannot_access_supervisor_dashboard(self):
-        """Verify that a non-staff worker/user cannot access the supervisor dashboard."""
-        worker_user = User.objects.create_user(username='worker1', password='password123', is_staff=False)
-        self.client.force_login(worker_user)
-
-        response = self.client.get(reverse('dashboard_home'))
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('/dashboard/login/', response.url)
-
-    def test_technician_cannot_access_supervisor_actions(self):
-        """Verify that a technician (is_staff=False) cannot execute supervisor-only actions."""
-        self.client.force_login(self.tech_user_a)
-
-        # Attempt to add a machine
-        response = self.client.post(reverse('dashboard_machine_add'), {'name': 'Illegal Machine', 'status': 'OPERATIONAL'})
-        self.assertEqual(response.status_code, 302)
-        self.assertIn('/dashboard/login/', response.url)
-        self.assertFalse(Machine.objects.filter(name='Illegal Machine').exists())
-
-    def test_factory_users_cannot_access_another_factory_records(self):
-        """Verify server-side isolation: Supervisor from Factory A cannot view or edit Factory B's fault or machine."""
+    def test_factory_users_cannot_access_another_factory_records(self, mock_assign_sms, mock_sms):
+        """Verify server-side isolation: Supervisor from Factory A cannot view Factory B's records."""
         self.client.force_login(self.sup_user_a)
-
-        # Attempting to access Factory B's fault detail -> HTTP 404
         response_fault = self.client.get(reverse('dashboard_fault_detail', kwargs={'pk': self.fault_b.id}))
         self.assertEqual(response_fault.status_code, 404)
 
-        # Attempting to edit Factory B's machine -> HTTP 404
-        machine_b = Machine.objects.create(name="Beta Generator", status="OPERATIONAL", factory=self.factory_b)
-        response_machine = self.client.get(reverse('dashboard_machine_edit', kwargs={'pk': machine_b.id}))
+        response_machine = self.client.get(reverse('dashboard_machine_edit', kwargs={'pk': self.machine_b.id}))
         self.assertEqual(response_machine.status_code, 404)
 
-    def test_valid_technician_workflow_still_works(self):
-        """Verify that the full technician workflow (ACCEPT -> START -> RESOLVE) operates cleanly."""
-        # 1. ACCEPT
+    def test_valid_technician_workflow_still_works(self, mock_assign_sms, mock_sms):
+        """9. Verify that the full technician workflow (ACCEPT -> START -> RESOLVE) operates cleanly."""
         res_accept = process_incoming_technician_sms(self.tech_a.phone_number, f'ACCEPT {self.fault_a.id}')
         self.assertEqual(res_accept['status'], 'success')
         self.fault_a.refresh_from_db()
         self.assertEqual(self.fault_a.status, FaultReport.STATUS_ACCEPTED)
 
-        # 2. START
         res_start = process_incoming_technician_sms(self.tech_a.phone_number, f'START {self.fault_a.id}')
         self.assertEqual(res_start['status'], 'success')
         self.fault_a.refresh_from_db()
         self.assertEqual(self.fault_a.status, FaultReport.STATUS_IN_PROGRESS)
 
-        # 3. RESOLVE
         res_resolve = process_incoming_technician_sms(self.tech_a.phone_number, f'RESOLVE {self.fault_a.id}')
         self.assertEqual(res_resolve['status'], 'success')
         self.fault_a.refresh_from_db()

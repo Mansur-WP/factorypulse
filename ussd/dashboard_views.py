@@ -36,26 +36,55 @@ def _get_safe_next_url(request, fallback='dashboard_home') -> str:
     return fallback
 
 
+from functools import wraps
+
+
 def supervisor_required(view_func):
     """
-    Decorator for views that checks if the user is logged in and is a staff member,
-    redirecting to the custom dashboard login page if not.
+    Decorator for views that checks if the user is logged in, active, a staff member,
+    and (for non-superusers) assigned to a factory.
+    Denies access and redirects to login if checks fail.
     """
-    decorator = user_passes_test(
-        lambda u: u.is_authenticated and u.is_active and u.is_staff,
-        login_url='dashboard_login'
-    )
-    return decorator(view_func)
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('dashboard_login')
+        if not request.user.is_active or not request.user.is_staff:
+            messages.error(request, "Access denied. Only authorized staff accounts can access the Supervisor Dashboard.")
+            return redirect('dashboard_login')
+        if not request.user.is_superuser:
+            has_factory = (
+                hasattr(request.user, 'supervisor_profile') and
+                request.user.supervisor_profile and
+                request.user.supervisor_profile.factory_id is not None
+            )
+            if not has_factory:
+                messages.error(request, "Access denied. Your supervisor account is not assigned to a factory.")
+                return redirect('dashboard_login')
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
 
 
 def dashboard_login(request):
     """
     Custom login view for supervisors and staff members.
-    Safely validates next redirect parameter to prevent open redirect vulnerabilities.
+    Safely validates next redirect parameter and enforces factory assignment.
     """
     if request.user.is_authenticated and request.user.is_staff:
-        safe_next = _get_safe_next_url(request)
-        return redirect(safe_next)
+        if not request.user.is_superuser:
+            has_factory = (
+                hasattr(request.user, 'supervisor_profile') and
+                request.user.supervisor_profile and
+                request.user.supervisor_profile.factory_id is not None
+            )
+            if not has_factory:
+                logout(request)
+            else:
+                safe_next = _get_safe_next_url(request)
+                return redirect(safe_next)
+        else:
+            safe_next = _get_safe_next_url(request)
+            return redirect(safe_next)
 
     error_message = None
     form_data = {}
@@ -70,8 +99,20 @@ def dashboard_login(request):
 
         if user is not None:
             if user.is_staff:
-                login(request, user)
-                return redirect(safe_next)
+                if not user.is_superuser:
+                    has_factory = (
+                        hasattr(user, 'supervisor_profile') and
+                        user.supervisor_profile and
+                        user.supervisor_profile.factory_id is not None
+                    )
+                    if not has_factory:
+                        error_message = "Access denied. Your supervisor account is not assigned to a factory."
+                    else:
+                        login(request, user)
+                        return redirect(safe_next)
+                else:
+                    login(request, user)
+                    return redirect(safe_next)
             else:
                 error_message = "Access denied. Only authorized staff accounts can access the Supervisor Dashboard."
         else:
@@ -97,12 +138,13 @@ def dashboard_logout(request):
 
 def _get_supervisor_factory(user):
     """
-    Returns the Factory instance associated with a supervisor user, if any.
-    Superusers or unassigned staff return None (global platform view).
+    Returns the Factory instance associated with a supervisor user.
+    - Superusers return None (global platform view).
+    - Staff users with an assigned factory return that Factory instance.
     """
     if not user or not user.is_authenticated or user.is_superuser:
         return None
-    if hasattr(user, 'supervisor_profile') and user.supervisor_profile and user.supervisor_profile.factory:
+    if hasattr(user, 'supervisor_profile') and user.supervisor_profile:
         return user.supervisor_profile.factory
     return None
 

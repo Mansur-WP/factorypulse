@@ -10,13 +10,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-factorypulse} -d $${POSTGRES_DB:-factorypulse_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-factorypulse} -d $${POSTGRES_DB:-factorypulse_db}" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
   web:
-    build: .
+    image: mpycraft/factorypulse:latest
     container_name: factorypulse-web
     restart: always
     ports:

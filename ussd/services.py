@@ -121,7 +121,13 @@ def create_fault_report(
     clean_tg_user = (telegram_username or '').strip()[:100]
     clean_status = (status or FaultReport.STATUS_OPEN).strip()[:20]
 
+    # Look up the machine's factory
+    from .models import Machine
+    machine_obj = Machine.objects.filter(name__iexact=clean_machine).first()
+    factory = machine_obj.factory if machine_obj else None
+
     fault = FaultReport.objects.create(
+        factory=factory,
         machine=clean_machine,
         problem=clean_problem,
         severity=clean_severity,
@@ -223,11 +229,12 @@ def assign_fault_to_technician(
     if not hasattr(tech_user, 'technician_profile'):
         raise ValidationError(f"User '{tech_user.username}' is not registered as a technician.")
 
-    # If fault is bound to a factory, ensure technician belongs to the same factory
-    if fault.factory and hasattr(tech_user, 'technician_profile'):
-        tech_factory = tech_user.technician_profile.factory
-        if tech_factory and tech_factory != fault.factory:
-            raise ValidationError("Technician does not belong to the fault's factory.")
+    # Strict factory match rule:
+    # If a fault belongs to a factory, the technician MUST belong to that exact same factory.
+    tech_profile = tech_user.technician_profile
+    if fault.factory:
+        if not tech_profile.factory or tech_profile.factory != fault.factory:
+            raise ValidationError(f"Technician '{tech_profile.name}' does not belong to factory '{fault.factory.name}'.")
 
     fault.assigned_to = tech_user
     if notes:

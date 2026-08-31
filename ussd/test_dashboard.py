@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from ussd.models import FaultReport, Machine, Technician
+from ussd.models import FaultReport, Machine, Technician, Factory, SupervisorProfile
 from ussd.services import update_fault_status, get_dashboard_stats, assign_fault_to_technician, get_available_technicians
 
 
@@ -21,18 +21,31 @@ class DashboardAuthTests(TestCase):
     """
 
     def setUp(self):
+        self.sms_patcher = patch('ussd.sms_service.send_sms')
+        self.sms_assign_patcher = patch('ussd.sms_service.send_technician_assignment_sms')
+        self.mock_sms = self.sms_patcher.start()
+        self.mock_sms_assign = self.sms_assign_patcher.start()
+
         self.client = Client()
         self.home_url = reverse('dashboard_home')
         self.faults_url = reverse('dashboard_faults')
         self.machines_url = reverse('dashboard_machines')
 
+        self.factory = Factory.objects.create(name="Default Test Factory")
+
         # Create test users
         self.staff_user = User.objects.create_user(
             username='staff', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
+
         self.regular_user = User.objects.create_user(
             username='regular', password='password123', is_staff=False
         )
+
+    def tearDown(self):
+        self.sms_patcher.stop()
+        self.sms_assign_patcher.stop()
 
     def test_anonymous_user_redirected_to_custom_login(self):
         """Unauthenticated users must be redirected to the custom dashboard login page."""
@@ -110,29 +123,40 @@ class DashboardFeaturesTests(TestCase):
     """
 
     def setUp(self):
+        self.sms_patcher = patch('ussd.sms_service.send_sms')
+        self.sms_assign_patcher = patch('ussd.sms_service.send_technician_assignment_sms')
+        self.mock_sms = self.sms_patcher.start()
+        self.mock_sms_assign = self.sms_assign_patcher.start()
+
         self.client = Client()
+        self.factory = Factory.objects.create(name="Default Test Factory")
         self.staff_user = User.objects.create_user(
             username='staff', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
         self.client.login(username='staff', password='password123')
 
         # Clear any auto-seeded machines to start with a clean slate
         Machine.objects.all().delete()
 
         # Seed machines
-        self.gen = Machine.objects.create(name='Generator', status='OPERATIONAL')
-        self.mill = Machine.objects.create(name='Milling Machine', status='MAINTENANCE')
+        self.gen = Machine.objects.create(name='Generator', status='OPERATIONAL', factory=self.factory)
+        self.mill = Machine.objects.create(name='Milling Machine', status='MAINTENANCE', factory=self.factory)
 
         # Seed fault reports
         self.f1 = FaultReport.objects.create(
-            machine='Generator', problem='Overheating', severity='High', status='OPEN'
+            machine='Generator', problem='Overheating', severity='High', status='OPEN', factory=self.factory
         )
         self.f2 = FaultReport.objects.create(
-            machine='Milling Machine', problem='Not working', severity='Critical', status='ASSIGNED'
+            machine='Milling Machine', problem='Not working', severity='Critical', status='ASSIGNED', factory=self.factory
         )
         self.f3 = FaultReport.objects.create(
-            machine='Generator', problem='Making noise', severity='Low', status='RESOLVED'
+            machine='Generator', problem='Making noise', severity='Low', status='RESOLVED', factory=self.factory
         )
+
+    def tearDown(self):
+        self.sms_patcher.stop()
+        self.sms_assign_patcher.stop()
 
     def test_dashboard_stats_calculations(self):
         """Dashboard home must correctly calculate and display stats."""
@@ -195,15 +219,26 @@ class FaultWorkflowTests(TestCase):
     """
 
     def setUp(self):
+        self.sms_patcher = patch('ussd.sms_service.send_sms')
+        self.sms_assign_patcher = patch('ussd.sms_service.send_technician_assignment_sms')
+        self.mock_sms = self.sms_patcher.start()
+        self.mock_sms_assign = self.sms_assign_patcher.start()
+
         self.client = Client()
+        self.factory = Factory.objects.create(name="Default Test Factory")
         self.staff_user = User.objects.create_user(
             username='staff', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
         self.client.login(username='staff', password='password123')
 
         self.fault = FaultReport.objects.create(
-            machine='Generator', problem='Not working', severity='High', status='OPEN'
+            machine='Generator', problem='Not working', severity='High', status='OPEN', factory=self.factory
         )
+
+    def tearDown(self):
+        self.sms_patcher.stop()
+        self.sms_assign_patcher.stop()
 
     def test_valid_status_transitions(self):
         """Ensure valid forward transitions work correctly."""
@@ -264,19 +299,30 @@ class MachineManagementTests(TestCase):
     """
 
     def setUp(self):
+        self.sms_patcher = patch('ussd.sms_service.send_sms')
+        self.sms_assign_patcher = patch('ussd.sms_service.send_technician_assignment_sms')
+        self.mock_sms = self.sms_patcher.start()
+        self.mock_sms_assign = self.sms_assign_patcher.start()
+
         self.client = Client()
+        self.factory = Factory.objects.create(name="Default Test Factory")
         self.staff_user = User.objects.create_user(
             username='staff', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
         self.client.login(username='staff', password='password123')
         
         # Clear auto-seeded machines to avoid conflicts
         Machine.objects.all().delete()
 
+    def tearDown(self):
+        self.sms_patcher.stop()
+        self.sms_assign_patcher.stop()
+
     def test_machine_list_displays_machines(self):
         """Machine list page must display all active machines with statuses."""
-        m1 = Machine.objects.create(name='Generator', status='OPERATIONAL')
-        m2 = Machine.objects.create(name='Packaging Machine', status='MAINTENANCE')
+        m1 = Machine.objects.create(name='Generator', status='OPERATIONAL', factory=self.factory)
+        m2 = Machine.objects.create(name='Packaging Machine', status='MAINTENANCE', factory=self.factory)
 
         response = self.client.get(reverse('dashboard_machines'))
         self.assertEqual(response.status_code, 200)
@@ -298,7 +344,7 @@ class MachineManagementTests(TestCase):
 
     def test_machine_creation_validation(self):
         """Supervisors cannot register a machine with a duplicate name."""
-        Machine.objects.create(name='Generator', status='OPERATIONAL')
+        Machine.objects.create(name='Generator', status='OPERATIONAL', factory=self.factory)
         url = reverse('dashboard_machine_add')
 
         # Duplicate POST
@@ -319,9 +365,11 @@ class TechnicianAssignmentTests(TestCase):
 
     def setUp(self, mock_sms=None):
         self.client = Client()
+        self.factory = Factory.objects.create(name="Default Test Factory")
         self.staff_user = User.objects.create_user(
             username='staff_sup', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
         self.regular_user = User.objects.create_user(
             username='regular_worker', password='password123', is_staff=False
         )
@@ -337,7 +385,8 @@ class TechnicianAssignmentTests(TestCase):
         self.tech_profile_1 = Technician.objects.create(
             user=self.tech_user_1,
             name='Musa Ibrahim',
-            phone_number='+2348011112222'
+            phone_number='+2348011112222',
+            factory=self.factory
         )
 
         self.tech_user_2 = User.objects.create_user(
@@ -346,7 +395,8 @@ class TechnicianAssignmentTests(TestCase):
         self.tech_profile_2 = Technician.objects.create(
             user=self.tech_user_2,
             name='Abdullahi Yusuf',
-            phone_number='+2348033334444'
+            phone_number='+2348033334444',
+            factory=self.factory
         )
 
         # Create faults
@@ -354,14 +404,16 @@ class TechnicianAssignmentTests(TestCase):
             machine='Generator',
             problem='Overheating',
             severity='High',
-            status=FaultReport.STATUS_OPEN
+            status=FaultReport.STATUS_OPEN,
+            factory=self.factory
         )
 
         self.fault_resolved = FaultReport.objects.create(
             machine='Packaging Machine',
             problem='Broken belt',
             severity='Medium',
-            status=FaultReport.STATUS_RESOLVED
+            status=FaultReport.STATUS_RESOLVED,
+            factory=self.factory
         )
 
     def test_technician_model_structure(self, mock_sms):
@@ -477,7 +529,8 @@ class TechnicianAssignmentTests(TestCase):
             machine='Milling Machine',
             problem='Making noise',
             severity='Low',
-            status=FaultReport.STATUS_OPEN
+            status=FaultReport.STATUS_OPEN,
+            factory=self.factory
         )
         assign_fault_to_technician(fault_abdullahi.id, self.tech_user_2)
 
@@ -503,20 +556,22 @@ class DashboardIntelligenceAndTimelineTests(TestCase):
 
     def setUp(self, mock_sms=None):
         self.client = Client()
+        self.factory = Factory.objects.create(name="Default Test Factory")
         self.staff_user = User.objects.create_user(
             username='staff_intel', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
         Machine.objects.all().delete()
         Technician.objects.all().delete()
         FaultReport.objects.all().delete()
 
         self.tech_user = User.objects.create_user(username='tech_intel', password='password123')
         self.tech_profile = Technician.objects.create(
-            user=self.tech_user, name='Intel Tech', phone_number='+2348099998888'
+            user=self.tech_user, name='Intel Tech', phone_number='+2348099998888', factory=self.factory
         )
 
-        self.m1 = Machine.objects.create(name='Generator')
-        self.m2 = Machine.objects.create(name='Packaging Machine')
+        self.m1 = Machine.objects.create(name='Generator', factory=self.factory)
+        self.m2 = Machine.objects.create(name='Packaging Machine', factory=self.factory)
 
     def test_dashboard_stats_kpi_cards(self, mock_sms):
         """get_dashboard_stats returns correct counts for all 7 KPI cards."""
@@ -626,20 +681,22 @@ class DowntimeIntelligenceTests(TestCase):
 
     def setUp(self, mock_sms=None):
         self.client = Client()
+        self.factory = Factory.objects.create(name="Default Test Factory")
         self.staff_user = User.objects.create_user(
             username='staff_downtime', password='password123', is_staff=True
         )
+        SupervisorProfile.objects.create(user=self.staff_user, factory=self.factory)
         Machine.objects.all().delete()
         Technician.objects.all().delete()
         FaultReport.objects.all().delete()
 
         self.tech_user = User.objects.create_user(username='tech_down', password='password123')
         self.tech_profile = Technician.objects.create(
-            user=self.tech_user, name='Downtime Tech', phone_number='+2348077776666'
+            user=self.tech_user, name='Downtime Tech', phone_number='+2348077776666', factory=self.factory
         )
 
-        self.m1 = Machine.objects.create(name='Generator')
-        self.m2 = Machine.objects.create(name='Packaging Machine')
+        self.m1 = Machine.objects.create(name='Generator', factory=self.factory)
+        self.m2 = Machine.objects.create(name='Packaging Machine', factory=self.factory)
 
     def test_empty_database_downtime_metrics(self, mock_sms):
         """Zero faults in DB returns zero downtime and 'None' for most affected machine."""
