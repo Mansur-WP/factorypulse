@@ -8,3 +8,6 @@ media/
 staticfiles/
 .vscode/
 .idea/
+.venv/
+venv/
+

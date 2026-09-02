@@ -1,12 +1,21 @@
 import logging
 
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from .models import FaultReport
 from .services import get_ussd_machine_list, PROBLEMS, SEVERITIES, create_fault_report
 
 logger = logging.getLogger(__name__)
+
+
+def landing_page(request):
+    """
+    Public landing page for FactoryPulse.
+    """
+    return render(request, 'ussd/landing.html')
+
 
 
 

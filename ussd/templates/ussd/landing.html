@@ -1,0 +1,1060 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FactoryPulse | Smarter Fault Reporting. Faster Maintenance.</title>
+    <meta name="description" content="FactoryPulse connects factory workers, supervisors, and technicians through USSD, SMS, and a real-time maintenance dashboard powered by Africa's Talking.">
+
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Landing Page CSS -->
+    <link rel="stylesheet" href="{% static 'ussd/landing.css' %}">
+    <style>
+        .brand-logo {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            line-height: 1;
+        }
+        .brand-logo-img {
+            height: 42px;
+            width: auto;
+            max-width: 220px;
+            object-fit: contain;
+            background: transparent;
+            display: block;
+            transition: transform 0.2s ease;
+        }
+        .brand-logo-img:hover {
+            transform: scale(1.03);
+        }
+        .footer-logo-img {
+            height: 48px;
+            width: auto;
+            max-width: 230px;
+            object-fit: contain;
+            background: transparent;
+            display: block;
+            margin-bottom: 1.25rem;
+            transition: transform 0.2s ease;
+        }
+        .footer-logo-img:hover {
+            transform: scale(1.03);
+        }
+        @media (max-width: 768px) {
+            .brand-logo-img {
+                height: 38px;
+                max-width: 190px;
+            }
+            .footer-logo-img {
+                height: 42px;
+                max-width: 200px;
+            }
+        }
+        @media (max-width: 480px) {
+            .brand-logo-img {
+                height: 34px;
+                max-width: 160px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background Industrial Grid Pattern -->
+    <div class="bg-grid-pattern" aria-hidden="true"></div>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 1: NAVBAR                                                  -->
+    <!-- ================================================================== -->
+    <header class="site-header" id="header">
+        <div class="container">
+            <nav class="navbar" aria-label="Main Navigation">
+                <a href="/" class="brand-logo" aria-label="FactoryPulse Home">
+                    <img src="{% static 'ussd/logo-light.png' %}" alt="FactoryPulse Logo" class="brand-logo-img">
+                </a>
+
+                <ul class="nav-links" id="navMenu">
+                    <li><a href="#how-it-works">How It Works</a></li>
+                    <li><a href="#lifecycle">Workflow</a></li>
+                    <li><a href="#africastalking">Africa's Talking</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li class="mobile-only-action" style="display: none;">
+                        <a href="{% url 'dashboard_home' %}" class="btn btn-primary" style="margin-top: 0.5rem; text-align: center;">Open Dashboard</a>
+                    </li>
+                </ul>
+
+                <div class="nav-actions">
+                    <a href="{% url 'dashboard_home' %}" id="nav-btn-dashboard" class="btn btn-primary">
+                        <span>Open Dashboard</span>
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+
+                <button type="button" class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle Navigation Menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- ============================================================== -->
+        <!-- SECTION 2: HERO                                                -->
+        <!-- ============================================================== -->
+        <section class="hero-section" id="hero">
+            <div class="hero-glow" aria-hidden="true"></div>
+            <div class="container">
+                <div class="hero-content">
+                    <div class="hero-badges-row">
+                        <span class="badge-tag mfg">
+                            <span aria-hidden="true">🏭</span> Built for Manufacturing
+                        </span>
+                        <span class="badge-tag at">
+                            <span aria-hidden="true">⚡</span> Powered by Africa's Talking
+                        </span>
+                    </div>
+
+                    <h1 class="hero-headline">
+                        Smarter Fault Reporting.<br>
+                        <span class="gradient-text">Faster Maintenance.</span>
+                    </h1>
+
+                    <p class="hero-supporting">
+                        FactoryPulse connects factory workers, supervisors, and technicians through USSD, SMS, and a real-time maintenance dashboard.
+                    </p>
+
+                    <div class="hero-cta-group">
+                        <a href="{% url 'dashboard_home' %}" id="hero-cta-primary" class="btn btn-primary">
+                            <span>Open Dashboard</span>
+                            <span aria-hidden="true">→</span>
+                        </a>
+                        <a href="#how-it-works" id="hero-cta-secondary" class="btn btn-secondary">
+                            <span>Explore Workflow</span>
+                        </a>
+                    </div>
+
+                    <!-- System Status Live Bar -->
+                    <div class="system-status-ticker" aria-label="System Metrics">
+                        <div class="ticker-item">
+                            <span class="dot"></span>
+                            <span>System Operational</span>
+                        </div>
+                        <div class="ticker-item">
+                            <span>⚡</span>
+                            <span>Africa's Talking USSD & SMS Gateway Live</span>
+                        </div>
+                        <div class="ticker-item">
+                            <span>⏱️</span>
+                            <span>&lt; 3s Automated Dispatch</span>
+                        </div>
+                        <div class="ticker-item">
+                            <span>🔒</span>
+                            <span>HMAC Token Protected</span>
+                        </div>
+                    </div>
+
+                    <!-- Hero Visual Showcase: Interactive USSD Simulator + Live Dashboard & Technician Sync -->
+                    <div class="hero-visual-frame">
+                        <div class="hero-preview-grid">
+                            
+                            <!-- Col 1: Interactive USSD Simulator -->
+                            <div class="ussd-simulator-card">
+                                <div class="col-header">
+                                    <span class="col-role">1. Factory Worker (USSD)</span>
+                                    <span class="col-pill">Interactive Demo</span>
+                                </div>
+
+                                <div class="ussd-phone-screen" id="ussdScreen">
+                                    <div class="ussd-screen-text" id="ussdScreenText">CON Welcome to FactoryPulse
+
+1. Report Fault
+2. Check Machine Status
+3. My Open Reports</div>
+                                    <div class="ussd-screen-prompt" id="ussdScreenPrompt">
+                                        <span>Response:</span>
+                                        <span id="ussdInputDisplay">1</span>
+                                    </div>
+                                </div>
+
+                                <div class="ussd-interactive-controls">
+                                    <div class="ussd-quick-buttons">
+                                        <button type="button" class="ussd-key-btn" onclick="pressKey('1')">1</button>
+                                        <button type="button" class="ussd-key-btn" onclick="pressKey('2')">2</button>
+                                        <button type="button" class="ussd-key-btn" onclick="pressKey('3')">3</button>
+                                        <button type="button" class="ussd-key-btn" onclick="pressKey('4')">4</button>
+                                        <button type="button" class="ussd-key-btn" onclick="pressKey('*')">*</button>
+                                        <button type="button" class="ussd-key-btn" onclick="pressKey('#')">#</button>
+                                    </div>
+                                    <div class="ussd-action-row">
+                                        <button type="button" class="ussd-action-btn send" id="ussdSendBtn" onclick="sendUssdInput()">Send ↵</button>
+                                        <button type="button" class="ussd-action-btn reset" onclick="resetUssdSim()">Reset ↺</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Col 2: Real-time Supervisor Panel -->
+                            <div class="preview-col-card">
+                                <div class="col-header">
+                                    <span class="col-role">2. Supervisor Dashboard</span>
+                                    <span class="col-pill" id="dashboardLiveStatus" style="color: #60a5fa;">● Live Sync</span>
+                                </div>
+                                <div class="preview-sim-box" id="supervisorSimBox">
+                                    <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 0.35rem;">LIVE INCOMING QUEUE</div>
+                                    <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; padding: 0.4rem; margin-bottom: 0.5rem;" id="simAlertCard">
+                                        <div style="color: #fca5a5; font-weight: 700;">🚨 Fault #FP-1042 • CRITICAL</div>
+                                        <div style="color: #e2e8f0; font-size: 0.725rem;">Machine: Generator Unit 01</div>
+                                        <div style="color: #cbd5e1; font-size: 0.725rem;">Problem: Overheating (88°C)</div>
+                                    </div>
+                                    <div style="font-size: 0.7rem; color: #94a3b8;">ACTION: Assigned to Musa Ibrahim (Tech)</div>
+                                </div>
+                            </div>
+
+                            <!-- Col 3: Technician SMS Dispatch -->
+                            <div class="preview-col-card">
+                                <div class="col-header">
+                                    <span class="col-role">3. Field Technician (SMS)</span>
+                                    <span class="col-pill" style="color: #f97316;">Africa's Talking</span>
+                                </div>
+                                <div class="preview-sim-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <div style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 0.35rem;">INCOMING SMS ALERT</div>
+                                        <div style="color: #fed7aa; font-style: italic; line-height: 1.4;">
+                                            "FP Alert: CRITICAL fault on Generator Unit 01 (Overheating). Fault #FP-1042. Reply ACCEPT 1042 to confirm."
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.725rem; color: #a7f3d0;">
+                                        ✔ Technician replied: "ACCEPT 1042"
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 3: THE PROBLEM                                         -->
+        <!-- ============================================================== -->
+        <section class="problem-section" id="problem">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Factory Floor Bottlenecks</div>
+                    <h2 class="section-title">When a machine stops, every minute matters.</h2>
+                    <p class="section-subtitle">
+                        Traditional plant maintenance relies on verbal messages, manual paper logs, and delayed phone calls—costing industrial operators thousands of dollars in unscheduled downtime.
+                    </p>
+                </div>
+
+                <div class="problem-grid">
+                    <div class="problem-card">
+                        <div class="problem-icon-wrapper">⏳</div>
+                        <h3>Delayed Reporting</h3>
+                        <p>Workers walk across massive factory floors or wait until shift changes to verbally inform managers of equipment failure.</p>
+                    </div>
+
+                    <div class="problem-card">
+                        <div class="problem-icon-wrapper">📵</div>
+                        <h3>No Floor Connectivity</h3>
+                        <p>Heavy machinery and steel structures create dead zones where native mobile apps fail without reliable Wi-Fi or cellular data.</p>
+                    </div>
+
+                    <div class="problem-card">
+                        <div class="problem-icon-wrapper">🔍</div>
+                        <h3>Zero Visibility</h3>
+                        <p>Plant supervisors lack centralized visibility into active equipment breakdowns, technician assignments, and repair progress.</p>
+                    </div>
+
+                    <div class="problem-card">
+                        <div class="problem-icon-wrapper">📉</div>
+                        <h3>Expensive Downtime</h3>
+                        <p>Uncoordinated response times compound machine idle hours, creating massive assembly line backlogs and lost output.</p>
+                    </div>
+                </div>
+
+                <div class="problem-bottom-callout">
+                    <p>
+                        FactoryPulse replaces manual delays with an automated digital coordination bridge across workers, supervisors, and technicians.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 4: HOW IT WORKS                                        -->
+        <!-- ============================================================== -->
+        <section class="how-it-works-section" id="how-it-works">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">End-to-End Workflow</div>
+                    <h2 class="section-title">From Machine Fault to Resolution in 4 Steps</h2>
+                    <p class="section-subtitle">
+                        A seamless, automated communication loop engineered for demanding factory environments.
+                    </p>
+                </div>
+
+                <div class="steps-pipeline-grid">
+                    <!-- Step 1 -->
+                    <div class="step-card">
+                        <div class="step-meta-row">
+                            <span class="step-number">STEP 01</span>
+                            <span class="step-role-badge">Worker</span>
+                        </div>
+                        <h3>Report via USSD</h3>
+                        <p>
+                            A factory worker notices an anomaly, dials <strong>*384*7381#</strong> on any standard mobile phone, and selects the machine, fault type, and severity in seconds.
+                        </p>
+                        <div class="step-visual-micro">
+                            <span>⚡</span>
+                            <code>*384*7381# → USSD Menu</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="step-card">
+                        <div class="step-meta-row">
+                            <span class="step-number">STEP 02</span>
+                            <span class="step-role-badge">System</span>
+                        </div>
+                        <h3>Instant Ingestion</h3>
+                        <p>
+                            Africa's Talking forwards the USSD payload via webhook to FactoryPulse. The report is recorded in real time and categorized into the central fault queue.
+                        </p>
+                        <div class="step-visual-micro">
+                            <span>📥</span>
+                            <code>POST /ussd/ → DB Ingest</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="step-card">
+                        <div class="step-meta-row">
+                            <span class="step-number">STEP 03</span>
+                            <span class="step-role-badge">Supervisor</span>
+                        </div>
+                        <h3>Assign Technician</h3>
+                        <p>
+                            The plant supervisor reviews the incoming alert on the live dashboard, evaluates priority, and dispatches an on-duty technician with one click.
+                        </p>
+                        <div class="step-visual-micro">
+                            <span>📊</span>
+                            <code>Dashboard → Auto SMS Alert</code>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="step-card">
+                        <div class="step-meta-row">
+                            <span class="step-number">STEP 04</span>
+                            <span class="step-role-badge">Technician</span>
+                        </div>
+                        <h3>SMS Response & Fix</h3>
+                        <p>
+                            The technician receives full incident details via SMS, responds to acknowledge assignment, and marks the machine resolved upon completing maintenance.
+                        </p>
+                        <div class="step-visual-micro">
+                            <span>🔧</span>
+                            <code>SMS Reply → Status: RESOLVED</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Linear Visual Pipeline Bar -->
+                <div class="visual-pipeline-bar" aria-label="Workflow pipeline sequence">
+                    <div class="flow-node worker">👷 Worker</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node ussd">📱 USSD Dial</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node backend">⚙️ FactoryPulse Ingest</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node supervisor">🖥️ Supervisor Dashboard</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node sms">💬 SMS Dispatch</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node technician">🔧 Technician</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node resolved">✅ Fault Resolved</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 5: FAULT LIFECYCLE                                     -->
+        <!-- ============================================================== -->
+        <section class="lifecycle-section" id="lifecycle">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">State Machine Architecture</div>
+                    <h2 class="section-title">Every Fault Has a Clear Lifecycle</h2>
+                    <p class="section-subtitle">
+                        Zero ambiguity. State transitions are tracked second-by-second to eliminate lost tickets and measure mean-time-to-repair (MTTR).
+                    </p>
+                </div>
+
+                <div class="lifecycle-timeline-wrapper">
+                    <div class="lifecycle-card open">
+                        <div class="lifecycle-badge">OPEN</div>
+                        <h4>1. Logged via USSD</h4>
+                        <p>Created by worker on factory floor. Awaiting supervisor triage.</p>
+                    </div>
+
+                    <div class="lifecycle-card assigned">
+                        <div class="lifecycle-badge">ASSIGNED</div>
+                        <h4>2. Tech Dispatched</h4>
+                        <p>Supervisor selects technician. Automated SMS dispatched via AT.</p>
+                    </div>
+
+                    <div class="lifecycle-card accepted">
+                        <div class="lifecycle-badge">ACCEPTED</div>
+                        <h4>3. Tech Confirmed</h4>
+                        <p>Technician acknowledges incident via two-way SMS reply.</p>
+                    </div>
+
+                    <div class="lifecycle-card in-progress">
+                        <div class="lifecycle-badge">IN_PROGRESS</div>
+                        <h4>4. Active Repair</h4>
+                        <p>Technician is on site actively executing machine repairs.</p>
+                    </div>
+
+                    <div class="lifecycle-card resolved">
+                        <div class="lifecycle-badge">RESOLVED</div>
+                        <h4>5. Verified Fixed</h4>
+                        <p>Maintenance completed. Machine restored to operational uptime.</p>
+                    </div>
+                </div>
+
+                <div class="lifecycle-explanation-box">
+                    <p>
+                        💡 Every state transition records timestamps, user IDs, and machine status—empowering plant managers with automated uptime analytics.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 6: AFRICA'S TALKING INTEGRATION                        -->
+        <!-- ============================================================== -->
+        <section class="at-section" id="africastalking">
+            <div class="at-glow" aria-hidden="true"></div>
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Core Infrastructure</div>
+                    <h2 class="section-title">Built Around Africa's Talking Telecom APIs</h2>
+                    <p class="section-subtitle">
+                        FactoryPulse leverages Africa's Talking robust communication infrastructure to bridge low-connectivity industrial floors with cloud operations.
+                    </p>
+                </div>
+
+                <!-- Hackathon Judge Quick-Test Callout -->
+                <div class="judge-quicktest-box">
+                    <div class="judge-test-info">
+                        <h4><span>⚡</span> Live Africa's Talking USSD Evaluation</h4>
+                        <p>Hackathon judges can test the live USSD reporting flow directly using Africa's Talking Web Simulator.</p>
+                    </div>
+                    <div class="judge-test-action-wrap">
+                        <span class="ussd-code-pill" id="ussdCodeDisplay">*384*7381#</span>
+                        <button type="button" class="btn btn-secondary btn-xs" onclick="copyServiceCode()">
+                            <span id="copyBtnText">Copy Code</span>
+                        </button>
+                        <a href="https://developers.africastalking.com/simulator" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-xs">
+                            <span>Open AT Simulator ↗</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="at-cards-grid">
+                    <!-- AT 1: USSD -->
+                    <div class="at-card">
+                        <div class="at-card-icon">📱</div>
+                        <h3>USSD Fault Reporting</h3>
+                        <p>
+                            Workers report breakdowns through dynamic multi-level menus. Zero mobile internet required—guaranteeing 100% reach on basic feature phones in shielded plant areas.
+                        </p>
+                    </div>
+
+                    <!-- AT 2: SMS -->
+                    <div class="at-card">
+                        <div class="at-card-icon">💬</div>
+                        <h3>Automated SMS Alerts</h3>
+                        <p>
+                            Instantly dispatches urgent maintenance notifications to technicians with machine details, problem description, severity level, and reply instructions.
+                        </p>
+                    </div>
+
+                    <!-- AT 3: Webhooks -->
+                    <div class="at-card">
+                        <div class="at-card-icon">🔄</div>
+                        <h3>Two-Way SMS Webhooks</h3>
+                        <p>
+                            Bi-directional webhook ingestion parses incoming technician SMS responses (e.g., <code>ACCEPT 1042</code>) to advance maintenance states in real time.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Interactive Webhook & Payload Inspector -->
+                <div class="payload-inspector-box">
+                    <div class="payload-inspector-header">
+                        <h4><span>🔍</span> Africa's Talking Payload & Webhook Inspector</h4>
+                        <ul class="payload-tabs-list">
+                            <li><button type="button" class="payload-tab-btn active" onclick="showPayloadTab('ussd-tab')">USSD Callback</button></li>
+                            <li><button type="button" class="payload-tab-btn" onclick="showPayloadTab('sms-tab')">SMS Dispatch</button></li>
+                            <li><button type="button" class="payload-tab-btn" onclick="showPayloadTab('webhook-tab')">Incoming SMS Webhook</button></li>
+                        </ul>
+                    </div>
+
+                    <!-- Tab 1: USSD Callback -->
+                    <div class="payload-tab-content active" id="ussd-tab">
+<span class="json-comment">// POST /ussd/ (Incoming callback from Africa's Talking USSD Gateway)</span>
+{
+  <span class="json-key">"sessionId"</span>: <span class="json-val">"ATUid_4f92d8e0923f4b8"</span>,
+  <span class="json-key">"serviceCode"</span>: <span class="json-val">"*384*7381#"</span>,
+  <span class="json-key">"phoneNumber"</span>: <span class="json-val">"+2348012345678"</span>,
+  <span class="json-key">"text"</span>: <span class="json-val">"1*1*2*4*1"</span> <span class="json-comment">// Navigation: Report -> Generator -> Overheating -> Critical -> Submit</span>
+}
+
+<span class="json-comment">// Response returned to Africa's Talking:</span>
+<span class="json-val">"END Fault report #FP-1042 logged. Supervisor has been notified via real-time dashboard."</span>
+                    </div>
+
+                    <!-- Tab 2: SMS Dispatch -->
+                    <div class="payload-tab-content" id="sms-tab">
+<span class="json-comment">// POST https://api.africastalking.com/version1/messaging (Outbound SMS Dispatch)</span>
+{
+  <span class="json-key">"username"</span>: <span class="json-val">"factorypulse_sandbox"</span>,
+  <span class="json-key">"to"</span>: <span class="json-val">"+2348098765432"</span>,
+  <span class="json-key">"message"</span>: <span class="json-val">"FP Alert: CRITICAL fault on Generator Unit 01 (Overheating). Fault #FP-1042. Reply ACCEPT 1042 to confirm assignment."</span>,
+  <span class="json-key">"from"</span>: <span class="json-val">"FactoryPulse"</span>
+}
+
+<span class="json-comment">// Africa's Talking Response:</span>
+{
+  <span class="json-key">"SMSMessageData"</span>: {
+    <span class="json-key">"Recipients"</span>: [{ <span class="json-key">"statusCode"</span>: <span class="json-num">101</span>, <span class="json-key">"status"</span>: <span class="json-val">"Success"</span>, <span class="json-key">"messageId"</span>: <span class="json-val">"ATXid_98b3"</span> }]
+  }
+}
+                    </div>
+
+                    <!-- Tab 3: Incoming SMS Webhook -->
+                    <div class="payload-tab-content" id="webhook-tab">
+<span class="json-comment">// POST /sms/incoming/ (Technician Acknowledgment Webhook)</span>
+<span class="json-comment">// Header: X-AT-Security-Token: &lt;HMAC_SHA256_HASH&gt;</span>
+{
+  <span class="json-key">"from"</span>: <span class="json-val">"+2348098765432"</span>,
+  <span class="json-key">"to"</span>: <span class="json-val">"40404"</span>,
+  <span class="json-key">"text"</span>: <span class="json-val">"ACCEPT 1042"</span>,
+  <span class="json-key">"date"</span>: <span class="json-val">"2026-09-02T01:30:00Z"</span>,
+  <span class="json-key">"id"</span>: <span class="json-val">"ATXid_sms_incoming_1042"</span>
+}
+
+<span class="json-comment">// FactoryPulse Action: Transitions Fault #FP-1042 from ASSIGNED -> ACCEPTED</span>
+                    </div>
+                </div>
+
+                <!-- Architecture Flow Diagram -->
+                <div class="at-arch-box">
+                    <h3 class="at-arch-title">Technical Architecture & Integration Pipeline</h3>
+                    <div class="arch-flow-diagram">
+                        <div class="arch-node">👷 Worker Handset</div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node highlight-at">⚡ AT Telecom Gateway</div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node highlight-fp">⚙️ FactoryPulse Webhook Core</div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">📊 Real-Time PostgreSQL DB</div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node highlight-at">💬 AT SMS Dispatch</div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">🔧 Field Technician</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 7: FEATURES                                            -->
+        <!-- ============================================================== -->
+        <section class="features-section" id="features">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Enterprise Capabilities</div>
+                    <h2 class="section-title">Built for Factory Operations</h2>
+                    <p class="section-subtitle">
+                        Purpose-built features designed to maintain maximum uptime in heavy manufacturing, processing, and assembly facilities.
+                    </p>
+                </div>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon-row">📶</div>
+                        <h3>Zero-Data Protocol</h3>
+                        <p>Fully operable via USSD and SMS. Works smoothly without active data bundles, smartphones, or factory Wi-Fi coverage.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-row">⚡</div>
+                        <h3>Sub-3-Second Dispatch</h3>
+                        <p>Automated SMS triggers alert technicians within seconds of fault assignment by the supervisor.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-row">📊</div>
+                        <h3>Live Supervisor Dashboard</h3>
+                        <p>Comprehensive dashboard showing active breakdowns, machine health, severity metrics, and historical logs.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-row">🔄</div>
+                        <h3>Two-Way Technician SMS</h3>
+                        <p>Technicians confirm and update work orders directly from their mobile SMS inbox with zero app friction.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-row">⚙️</div>
+                        <h3>Machine Asset Registry</h3>
+                        <p>Manage machines, operational status, factory locations, and maintenance history through an administrative panel.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon-row">🔒</div>
+                        <h3>Role-Based Security</h3>
+                        <p>Protected supervisor authentication, HMAC webhook validation, and strict data integrity protection across all endpoints.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 8: DASHBOARD SHOWCASE                                  -->
+        <!-- ============================================================== -->
+        <section class="showcase-section" id="dashboard">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Supervisor Command Center</div>
+                    <h2 class="section-title">Real-Time Factory Floor Visibility</h2>
+                    <p class="section-subtitle">
+                        Gain complete control over maintenance dispatch, technician allocation, and plant operational health.
+                    </p>
+                </div>
+
+                <div class="dashboard-mockup-frame">
+                    <div class="mockup-topbar">
+                        <div class="mockup-window-controls">
+                            <span class="mockup-dot red"></span>
+                            <span class="mockup-dot yellow"></span>
+                            <span class="mockup-dot green"></span>
+                        </div>
+                        <div class="mockup-title">factorypulse.internal/dashboard/</div>
+                        <div class="mockup-badge">● LIVE STREAM</div>
+                    </div>
+
+                    <div class="mockup-body">
+                        <!-- KPI Row -->
+                        <div class="mockup-kpis">
+                            <div class="mock-kpi blue">
+                                <div class="mock-kpi-lbl">Total Machines</div>
+                                <div class="mock-kpi-val">24</div>
+                            </div>
+                            <div class="mock-kpi amber">
+                                <div class="mock-kpi-lbl">Open Faults</div>
+                                <div class="mock-kpi-val">3</div>
+                            </div>
+                            <div class="mock-kpi red">
+                                <div class="mock-kpi-lbl">Critical Severity</div>
+                                <div class="mock-kpi-val">1</div>
+                            </div>
+                            <div class="mock-kpi green">
+                                <div class="mock-kpi-lbl">Resolved Today</div>
+                                <div class="mock-kpi-val">12</div>
+                            </div>
+                        </div>
+
+                        <!-- Split Content: Table + Activity Feed -->
+                        <div class="mockup-split">
+                            <div class="mock-panel">
+                                <div class="mock-panel-title">
+                                    <span>Active Equipment Faults</span>
+                                    <span style="font-size: 0.75rem; color: #38bdf8; font-weight: normal;">Live Updates ↻</span>
+                                </div>
+                                <table class="mock-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Machine</th>
+                                            <th>Problem</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>#FP-1042</code></td>
+                                            <td>Generator 01</td>
+                                            <td>Overheating</td>
+                                            <td><span class="pill-sm critical">CRITICAL</span></td>
+                                            <td><span class="pill-sm in_progress">IN_PROGRESS</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>#FP-1041</code></td>
+                                            <td>Packaging Conveyor</td>
+                                            <td>Belt Jam</td>
+                                            <td><span class="pill-sm high">HIGH</span></td>
+                                            <td><span class="pill-sm open">OPEN</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>#FP-1040</code></td>
+                                            <td>Milling Unit 03</td>
+                                            <td>Abnormal Vibration</td>
+                                            <td><span class="pill-sm medium">MEDIUM</span></td>
+                                            <td><span class="pill-sm resolved">RESOLVED</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mock-panel">
+                                <div class="mock-panel-title">Live Dispatch Feed</div>
+                                <div class="mock-activity-list">
+                                    <div class="mock-activity-item">
+                                        <span class="mock-activity-time">01:28</span>
+                                        <span>SMS sent to <strong>Musa Ibrahim</strong> for #FP-1042</span>
+                                    </div>
+                                    <div class="mock-activity-item">
+                                        <span class="mock-activity-time">01:26</span>
+                                        <span>Worker dialed USSD for <strong>Generator 01</strong></span>
+                                    </div>
+                                    <div class="mock-activity-item">
+                                        <span class="mock-activity-time">01:15</span>
+                                        <span>#FP-1040 marked <strong>RESOLVED</strong> by Tech</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 9: WHY FACTORYPULSE                                    -->
+        <!-- ============================================================== -->
+        <section class="why-section" id="why">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Value Proposition</div>
+                    <h2 class="section-title">Why FactoryPulse Wins on the Factory Floor</h2>
+                    <p class="section-subtitle">
+                        Engineered specifically for real-world manufacturing constraints where simplicity and reliability outperform fragile complex apps.
+                    </p>
+                </div>
+
+                <div class="why-grid">
+                    <div class="why-card">
+                        <div class="why-card-icon">⚡</div>
+                        <h3>Zero Training Friction</h3>
+                        <p>Workers already know how to dial USSD codes. No app downloads, accounts, or complex onboarding required.</p>
+                    </div>
+
+                    <div class="why-card">
+                        <div class="why-card-icon">🏭</div>
+                        <h3>Works in Shielded Areas</h3>
+                        <p>Operates reliably across concrete basements, steel-reinforced plants, and remote facilities with weak 2G signal.</p>
+                    </div>
+
+                    <div class="why-card">
+                        <div class="why-card-icon">💰</div>
+                        <h3>Fraction of the Cost</h3>
+                        <p>Save tens of thousands of dollars compared to heavy industrial IoT platforms that require expensive proprietary sensor retrofits.</p>
+                    </div>
+
+                    <div class="why-card">
+                        <div class="why-card-icon">⏱️</div>
+                        <h3>Rapid 1-Day Deployment</h3>
+                        <p>Register machines and phone numbers in the administrative panel to start receiving automated maintenance tickets immediately.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- FAQ ACCORDION SECTION                                          -->
+        <!-- ============================================================== -->
+        <section class="faq-section" id="faq">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Industrial Realities FAQ</div>
+                    <h2 class="section-title">Frequently Asked Questions</h2>
+                    <p class="section-subtitle">
+                        Common technical and operational questions from plant managers and hackathon evaluators.
+                    </p>
+                </div>
+
+                <div class="faq-accordion-list">
+                    <!-- FAQ 1 -->
+                    <div class="faq-item active">
+                        <button type="button" class="faq-question-btn" onclick="toggleFaq(this)">
+                            <span>Why use USSD instead of a native mobile app?</span>
+                            <span class="faq-icon-toggle">+</span>
+                        </button>
+                        <div class="faq-answer-panel">
+                            Factory floors are filled with metallic shielding, heavy motors, and concrete walls where 4G/5G and Wi-Fi fail. Furthermore, workers frequently carry basic feature phones or cannot install third-party apps with personal data bundles. USSD operates over standard cellular signaling channels with 100% reach on any phone, zero data cost, and instant menu responsiveness.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 2 -->
+                    <div class="faq-item">
+                        <button type="button" class="faq-question-btn" onclick="toggleFaq(this)">
+                            <span>How do field technicians update work orders without an app?</span>
+                            <span class="faq-icon-toggle">+</span>
+                        </button>
+                        <div class="faq-answer-panel">
+                            When assigned a task, technicians receive an automated SMS with the machine name, problem, severity, and ticket ID. Technicians can simply reply with <code>ACCEPT &lt;ID&gt;</code> to confirm or mark the task completed upon repair. Africa's Talking routes this reply back into FactoryPulse webhooks to update the dashboard instantly.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 3 -->
+                    <div class="faq-item">
+                        <button type="button" class="faq-question-btn" onclick="toggleFaq(this)">
+                            <span>How does FactoryPulse protect webhook endpoints from unauthorized calls?</span>
+                            <span class="faq-icon-toggle">+</span>
+                        </button>
+                        <div class="faq-answer-panel">
+                            All incoming webhooks (USSD callbacks and SMS delivery receipts) are verified using secure HMAC tokens and IP verification against Africa's Talking gateway headers. Requests missing valid authentication signatures are immediately rejected.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 4 -->
+                    <div class="faq-item">
+                        <button type="button" class="faq-question-btn" onclick="toggleFaq(this)">
+                            <span>How does FactoryPulse help measure plant downtime?</span>
+                            <span class="faq-icon-toggle">+</span>
+                        </button>
+                        <div class="faq-answer-panel">
+                            Every fault report captures exact millisecond timestamps at creation (OPEN), assignment (ASSIGNED), technician acknowledgment (ACCEPTED), work start (IN_PROGRESS), and completion (RESOLVED). This provides actionable Mean Time to Detect (MTTD) and Mean Time to Repair (MTTR) analytics to plant supervisors.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECTION 10: DEMO / CALL TO ACTION                              -->
+        <!-- ============================================================== -->
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-box">
+                    <h2>Ready to Eliminate Factory Downtime?</h2>
+                    <p>
+                        Experience the live supervisor dashboard and explore real-time fault triage, technician dispatch, and uptime analytics.
+                    </p>
+                    <a href="{% url 'dashboard_home' %}" id="footer-cta-btn" class="btn btn-primary">
+                        <span>Open Supervisor Dashboard</span>
+                        <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ================================================================== -->
+    <!-- SECTION 11: FOOTER                                                 -->
+    <!-- ================================================================== -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <a href="/" class="brand-logo">
+                        <img src="{% static 'ussd/logo-light.png' %}" alt="FactoryPulse Logo" class="footer-logo-img">
+                    </a>
+                    <p class="footer-tagline">
+                        Smarter Fault Reporting. Faster Maintenance.
+                    </p>
+                </div>
+
+                <div class="footer-links-group">
+                    <div class="footer-col">
+                        <h4>Platform</h4>
+                        <ul>
+                            <li><a href="{% url 'dashboard_home' %}">Dashboard</a></li>
+                            <li><a href="#how-it-works">How It Works</a></li>
+                            <li><a href="#features">Features</a></li>
+                            <li><a href="#faq">FAQ</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-col">
+                        <h4>Technology</h4>
+                        <ul>
+                            <li><a href="#africastalking">Africa's Talking USSD</a></li>
+                            <li><a href="#africastalking">Africa's Talking SMS</a></li>
+                            <li><a href="#lifecycle">Fault State Machine</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="footer-col">
+                        <h4>Access</h4>
+                        <ul>
+                            <li><a href="{% url 'dashboard_home' %}">Supervisor Login</a></li>
+                            <li><a href="{% url 'admin:index' %}" target="_blank">Django Admin</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>© 2026 FactoryPulse. Real-time factory maintenance coordination. Powered by Africa's Talking.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Scripts for USSD Simulator, FAQ Accordion, Payload Inspector, and Mobile Menu -->
+    <script>
+        // Mobile Nav Toggle
+        const mobileNavToggle = document.getElementById('mobileNavToggle');
+        const navMenu = document.getElementById('navMenu');
+        if (mobileNavToggle && navMenu) {
+            mobileNavToggle.addEventListener('click', () => {
+                navMenu.classList.toggle('active');
+            });
+        }
+
+        // ==========================================
+        // INTERACTIVE USSD SIMULATOR STATE MACHINE
+        // ==========================================
+        const ussdSteps = [
+            {
+                text: "CON Welcome to FactoryPulse\n\n1. Report Fault\n2. Check Machine Status\n3. My Open Reports",
+                defaultInput: "1"
+            },
+            {
+                text: "CON Select Machine:\n\n1. Generator Unit 01\n2. Packaging Machine\n3. Milling Unit 03",
+                defaultInput: "1"
+            },
+            {
+                text: "CON What is the problem?\n\n1. Not working / Stalled\n2. Overheating\n3. Making unusual noise\n4. Other issue",
+                defaultInput: "2"
+            },
+            {
+                text: "CON Select Severity:\n\n1. Low\n2. Medium\n3. High\n4. Critical",
+                defaultInput: "4"
+            },
+            {
+                text: "CON Report Summary:\nMachine: Generator 01\nProblem: Overheating\nSeverity: Critical\n\n1. Confirm & Submit\n2. Cancel",
+                defaultInput: "1"
+            },
+            {
+                text: "END Fault report logged successfully!\n\nTicket ID: #FP-1042\nStatus: OPEN\nSupervisor & technician alerted.",
+                defaultInput: ""
+            }
+        ];
+
+        let currentUssdStep = 0;
+        const ussdScreenText = document.getElementById('ussdScreenText');
+        const ussdInputDisplay = document.getElementById('ussdInputDisplay');
+        const ussdScreenPrompt = document.getElementById('ussdScreenPrompt');
+        const ussdSendBtn = document.getElementById('ussdSendBtn');
+
+        function updateUssdScreen() {
+            if (currentUssdStep < ussdSteps.length) {
+                const step = ussdSteps[currentUssdStep];
+                ussdScreenText.textContent = step.text;
+                if (currentUssdStep === ussdSteps.length - 1) {
+                    ussdScreenPrompt.style.display = 'none';
+                    ussdSendBtn.textContent = 'Done ✓';
+                    // Trigger Live Dashboard simulation reaction
+                    const dashStatus = document.getElementById('dashboardLiveStatus');
+                    const simAlertCard = document.getElementById('simAlertCard');
+                    if (dashStatus) dashStatus.textContent = '🚨 New Ingest!';
+                    if (simAlertCard) {
+                        simAlertCard.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.6)';
+                    }
+                } else {
+                    ussdScreenPrompt.style.display = 'flex';
+                    ussdInputDisplay.textContent = step.defaultInput;
+                    ussdSendBtn.textContent = 'Send ↵';
+                }
+            }
+        }
+
+        function pressKey(key) {
+            if (currentUssdStep < ussdSteps.length - 1) {
+                ussdInputDisplay.textContent = key;
+            }
+        }
+
+        function sendUssdInput() {
+            if (currentUssdStep < ussdSteps.length - 1) {
+                currentUssdStep++;
+                updateUssdScreen();
+            } else {
+                resetUssdSim();
+            }
+        }
+
+        function resetUssdSim() {
+            currentUssdStep = 0;
+            const dashStatus = document.getElementById('dashboardLiveStatus');
+            const simAlertCard = document.getElementById('simAlertCard');
+            if (dashStatus) dashStatus.textContent = '● Live Sync';
+            if (simAlertCard) simAlertCard.style.boxShadow = 'none';
+            updateUssdScreen();
+        }
+
+        // ==========================================
+        // PAYLOAD INSPECTOR TAB TOGGLES
+        // ==========================================
+        function showPayloadTab(tabId) {
+            document.querySelectorAll('.payload-tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.payload-tab-btn').forEach(el => el.classList.remove('active'));
+            
+            const target = document.getElementById(tabId);
+            if (target) target.classList.add('active');
+
+            event.target.classList.add('active');
+        }
+
+        // ==========================================
+        // FAQ ACCORDION TOGGLE
+        // ==========================================
+        function toggleFaq(btn) {
+            const item = btn.closest('.faq-item');
+            const isOpen = item.classList.contains('active');
+            
+            // Close all
+            document.querySelectorAll('.faq-item').forEach(el => el.classList.remove('active'));
+            
+            if (!isOpen) {
+                item.classList.add('active');
+            }
+        }
+
+        // ==========================================
+        // COPY SERVICE CODE UTILITY
+        // ==========================================
+        function copyServiceCode() {
+            const code = document.getElementById('ussdCodeDisplay').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btnText = document.getElementById('copyBtnText');
+                if (btnText) {
+                    btnText.textContent = 'Copied! ✓';
+                    setTimeout(() => { btnText.textContent = 'Copy Code'; }, 2000);
+                }
+            }).catch(() => {
+                alert('USSD Code: ' + code);
+            });
+        }
+    </script>
+</body>
+</html>

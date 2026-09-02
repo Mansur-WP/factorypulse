@@ -18,9 +18,11 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <span style="font-size: 1.35rem;">🏭</span>
-            <h1>FactoryPulse</h1>
+            <a href="{% url 'dashboard_home' %}" style="display: flex; align-items: center; text-decoration: none;">
+                <img src="{% static 'ussd/logo.png' %}" alt="FactoryPulse Logo" class="sidebar-logo-img">
+            </a>
         </div>
+
 
         <div class="sidebar-section-title">Monitoring</div>
         <ul class="sidebar-menu">

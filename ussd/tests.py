@@ -200,3 +200,55 @@ class USSDReportFaultFlowTests(TestCase):
             self.assertNotIn(settings.SECRET_KEY, content)
         if hasattr(settings, 'AFRICASTALKING_API_KEY') and settings.AFRICASTALKING_API_KEY:
             self.assertNotIn(settings.AFRICASTALKING_API_KEY, content)
+
+
+class PublicLandingPageTests(TestCase):
+    """
+    Tests for the public landing page at route '/'.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.landing_url = '/'
+
+    def test_landing_page_status_and_template(self):
+        """GET / should return 200 and render landing.html."""
+        response = self.client.get(self.landing_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'ussd/landing.html')
+
+    def test_landing_page_content_and_brand(self):
+        """Ensure all key required text, headlines, and Africa's Talking integration sections exist."""
+        response = self.client.get(self.landing_url)
+        content = response.content.decode('utf-8')
+
+        # Brand & Hero
+        self.assertIn('FactoryPulse', content)
+        self.assertIn('Smarter Fault Reporting.', content)
+        self.assertIn('Faster Maintenance.', content)
+        self.assertIn("Built for Manufacturing", content)
+        self.assertIn("Powered by Africa's Talking", content)
+
+        # Africa's Talking section
+        self.assertIn("Built Around Africa's Talking", content)
+        self.assertIn('USSD', content)
+        self.assertIn('SMS', content)
+        self.assertIn('Webhooks', content)
+
+        # Workflow & Lifecycle
+        self.assertIn('From Machine Fault to Resolution', content)
+        self.assertIn('Every Fault Has a Clear Lifecycle', content)
+        self.assertIn('OPEN', content)
+        self.assertIn('ASSIGNED', content)
+        self.assertIn('ACCEPTED', content)
+        self.assertIn('IN_PROGRESS', content)
+        self.assertIn('RESOLVED', content)
+
+        # Problem & Features
+        self.assertIn('When a machine stops, every minute matters.', content)
+        self.assertIn('Built for Factory Operations', content)
+
+        # Dashboard CTA
+        self.assertIn('/dashboard/', content)
+        self.assertIn('Open Dashboard', content)
+

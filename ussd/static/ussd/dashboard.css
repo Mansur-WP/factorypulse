@@ -78,12 +78,27 @@ body {
 }
 
 .sidebar-header {
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid #1e293b;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: flex-start;
 }
+
+.sidebar-logo-img {
+  height: 38px;
+  width: auto;
+  max-width: 190px;
+  object-fit: contain;
+  background: transparent;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-logo-img:hover {
+  transform: scale(1.03);
+}
+
 
 .sidebar-header h1 {
   font-size: 1.15rem;
@@ -91,6 +106,7 @@ body {
   color: #ffffff;
   letter-spacing: -0.02em;
 }
+
 
 .sidebar-section-title {
   padding: 1.25rem 1.5rem 0.4rem;

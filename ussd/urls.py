@@ -1,11 +1,10 @@
 from django.urls import path
-from django.views.generic import RedirectView
-from .views import ussd_callback, sms_delivery_callback, sms_incoming_callback
+from .views import ussd_callback, sms_delivery_callback, sms_incoming_callback, landing_page
 from . import dashboard_views
 
 urlpatterns = [
-    # Root redirect
-    path('', RedirectView.as_view(url='/dashboard/', permanent=False), name='root_redirect'),
+    # Public Landing Page
+    path('', landing_page, name='landing_page'),
 
     # USSD callback
     path('ussd/', ussd_callback, name='ussd_callback'),

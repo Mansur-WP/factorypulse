@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,7 @@
             margin: 0;
             padding: 0;
         }
+
         body {
             min-height: 100vh;
             width: 100%;
@@ -27,10 +29,12 @@
             color: #0f172a;
             padding: 1.5rem;
         }
+
         .login-wrapper {
             width: 100%;
             max-width: 420px;
         }
+
         .login-card {
             background-color: #ffffff;
             border-radius: 16px;
@@ -38,34 +42,27 @@
             padding: 2.5rem 2rem;
             width: 100%;
         }
+
         .login-header {
             text-align: center;
             margin-bottom: 2rem;
         }
-        .brand-icon {
-            font-size: 2.5rem;
-            width: 64px;
-            height: 64px;
-            line-height: 64px;
-            background-color: #f1f5f9;
-            border-radius: 50%;
-            margin: 0 auto 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+
+        .login-logo-img {
+            height: 52px;
+            width: auto;
+            max-width: 260px;
+            object-fit: contain;
+            margin-bottom: 0.75rem;
+            display: inline-block;
         }
-        .login-header h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #0f172a;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.25rem;
-        }
+
         .login-header p {
             color: #64748b;
             font-size: 0.9rem;
             font-weight: 500;
         }
+
         .login-alert {
             background-color: #fef2f2;
             color: #991b1b;
@@ -79,16 +76,19 @@
             gap: 0.5rem;
             line-height: 1.4;
         }
+
         .login-form {
             display: flex;
             flex-direction: column;
             gap: 1.25rem;
         }
+
         .form-group {
             display: flex;
             flex-direction: column;
             gap: 0.4rem;
         }
+
         .form-group label {
             font-size: 0.775rem;
             font-weight: 600;
@@ -96,6 +96,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+
         .form-control {
             width: 100%;
             padding: 0.8rem 1rem;
@@ -108,10 +109,12 @@
             transition: all 0.2s ease-in-out;
             background-color: #ffffff;
         }
+
         .form-control:focus {
             border-color: #2563eb;
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
+
         .login-btn {
             width: 100%;
             padding: 0.85rem;
@@ -126,15 +129,37 @@
             margin-top: 0.5rem;
             transition: background-color 0.2s, transform 0.1s;
         }
+
         .login-btn:hover {
             background-color: #1d4ed8;
         }
+
         .login-btn:active {
             transform: scale(0.99);
         }
+
+        .btn-back-home {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 1.25rem;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-back-home:hover {
+            color: #2563eb;
+            transform: translateX(-2px);
+        }
+
         .login-footer {
             text-align: center;
-            margin-top: 2rem;
+            margin-top: 1.5rem;
             font-size: 0.775rem;
             color: #94a3b8;
             border-top: 1px solid #f1f5f9;
@@ -142,23 +167,23 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="login-wrapper">
         <div class="login-card">
-            
+
             <div class="login-header">
-                <div class="brand-icon">🏭</div>
-                <h1>FactoryPulse</h1>
+                <img src="{% static 'ussd/logo.png' %}" alt="FactoryPulse Logo" class="login-logo-img">
                 <p>Supervisor Dashboard Login</p>
             </div>
 
             <!-- Error Alerts -->
             {% if error_message %}
-                <div class="login-alert">
-                    <span>⚠️</span>
-                    <span>{{ error_message }}</span>
-                </div>
+            <div class="login-alert">
+                <span>⚠️</span>
+                <span>{{ error_message }}</span>
+            </div>
             {% endif %}
 
             <form method="post" class="login-form">
@@ -167,19 +192,24 @@
 
                 <div class="form-group">
                     <label for="username">Supervisor Username</label>
-                    <input type="text" name="username" id="username" required autofocus 
-                           placeholder="Enter your username" class="form-control"
-                           value="{{ form_data.username|default:'' }}">
+                    <input type="text" name="username" id="username" required autofocus
+                        placeholder="Enter your username" class="form-control"
+                        value="{{ form_data.username|default:'' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" name="password" id="password" required 
-                           placeholder="Enter your password" class="form-control">
+                    <input type="password" name="password" id="password" required placeholder="Enter your password"
+                        class="form-control">
                 </div>
 
                 <button type="submit" class="login-btn">Sign In to Dashboard</button>
             </form>
+
+            <a href="{% url 'landing_page' %}" class="btn-back-home">
+                <span aria-hidden="true">←</span>
+                <span>Back to Home</span>
+            </a>
 
             <div class="login-footer">
                 🔒 Restricted Access • Authorized Personnel Only
@@ -188,5 +218,7 @@
         </div>
     </div>
 
+
 </body>
+
 </html>
