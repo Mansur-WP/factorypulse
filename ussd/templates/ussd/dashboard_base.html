@@ -48,6 +48,12 @@
                     <span>Machine Management</span>
                 </a>
             </li>
+            <li class="{% if 'technician' in request.resolver_match.url_name %}active{% endif %}">
+                <a href="{% url 'dashboard_technicians' %}">
+                    <span>👥</span>
+                    <span>Technicians</span>
+                </a>
+            </li>
         </ul>
 
         <div class="sidebar-section-title">System</div>

@@ -1,0 +1,45 @@
+{% extends "ussd/dashboard_base.html" %}
+
+{% block page_title %}{% if technician %}Edit Technician: {{ technician.name }}{% else %}Add New Technician{% endif %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-section" style="max-width: 600px;">
+    <div class="card">
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; color: #1e293b;">Technician Details</h3>
+        
+        <form method="post" action="{% if technician %}{% url 'dashboard_technician_edit' pk=technician.id %}{% else %}{% url 'dashboard_technician_add' %}{% endif %}">
+            {% csrf_token %}
+            
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="name" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #475569;">Full Name <span style="color: #ef4444;">*</span></label>
+                <input type="text" id="name" name="name" value="{{ form_data.name }}" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit;" required maxlength="150" placeholder="e.g. Mansur">
+                {% if form_errors.name %}
+                    <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.5rem;">{{ form_errors.name.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="phone_number" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #475569;">Phone Number <span style="color: #ef4444;">*</span></label>
+                <input type="text" id="phone_number" name="phone_number" value="{{ form_data.phone_number }}" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit;" required maxlength="20" placeholder="e.g. +2348000000000">
+                <div style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem;">Used for SMS commands and identification.</div>
+                {% if form_errors.phone_number %}
+                    <div style="color: #ef4444; font-size: 0.875rem; margin-top: 0.5rem;">{{ form_errors.phone_number.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" name="is_active" id="is_active" {% if form_data.is_active or not form_data and not technician %}checked{% endif %} style="margin-right: 0.75rem; width: 1.25rem; height: 1.25rem;">
+                    <span style="font-weight: 500; color: #475569;">Active Technician</span>
+                </label>
+                <div style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; margin-left: 2rem;">Inactive technicians cannot be assigned new faults.</div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary">{% if technician %}Save Changes{% else %}Add Technician{% endif %}</button>
+                <a href="{% url 'dashboard_technicians' %}" class="btn btn-secondary" style="background-color: #f1f5f9; color: #475569; border-color: #cbd5e1;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

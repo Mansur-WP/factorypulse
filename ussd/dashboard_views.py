@@ -400,3 +400,154 @@ def dashboard_machine_edit(request, pk):
         'form_errors': form_errors,
     }
     return render(request, 'ussd/dashboard_machine_form.html', context)
+
+
+@supervisor_required
+def dashboard_technicians(request):
+    """
+    Displays a list of technicians and their performance metrics.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    factory = _get_supervisor_factory(request.user)
+    
+    qs = Technician.objects.select_related('user').all()
+    if factory:
+        qs = qs.filter(factory=factory)
+        
+    technicians_data = []
+    
+    for tech in qs:
+        # Get faults assigned to this technician's user
+        faults = FaultReport.objects.filter(assigned_to=tech.user)
+        
+        assigned_count = faults.exclude(status=FaultReport.STATUS_RESOLVED).count()
+        resolved_count = faults.filter(status=FaultReport.STATUS_RESOLVED).count()
+        in_progress_count = faults.filter(status=FaultReport.STATUS_IN_PROGRESS).count()
+        
+        status = 'Busy' if in_progress_count > 0 else 'Available'
+        if not tech.user.is_active:
+            status = 'Inactive'
+            
+        technicians_data.append({
+            'id': tech.id,
+            'name': tech.name,
+            'phone_number': tech.phone_number,
+            'status': status,
+            'is_active': tech.user.is_active,
+            'total_assigned': assigned_count + resolved_count,
+            'active_assigned': assigned_count,
+            'resolved_faults': resolved_count,
+            'in_progress': in_progress_count,
+        })
+        
+    context = {
+        'technicians_data': technicians_data,
+    }
+    return render(request, 'ussd/dashboard_technicians.html', context)
+
+
+@supervisor_required
+def dashboard_technician_add(request):
+    """
+    Adds a new technician.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    factory = _get_supervisor_factory(request.user)
+    
+    form_errors = {}
+    form_data = {}
+    
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        phone_number = request.POST.get('phone_number', '').strip()
+        is_active = request.POST.get('is_active') == 'on'
+        
+        form_data = {'name': name, 'phone_number': phone_number, 'is_active': is_active}
+        
+        if not name:
+            form_errors['name'] = ['Name is required.']
+        if not phone_number:
+            form_errors['phone_number'] = ['Phone number is required.']
+            
+        if not form_errors:
+            # Simple check for existing phone number
+            if Technician.objects.filter(phone_number=phone_number).exists():
+                form_errors['phone_number'] = ['A technician with this phone number already exists.']
+            else:
+                # Create user for technician
+                username = f"tech_{phone_number}"
+                # Handle edge case where username exists
+                if User.objects.filter(username=username).exists():
+                    import time
+                    username = f"tech_{phone_number}_{int(time.time())}"
+                    
+                user = User.objects.create_user(username=username, password=User.objects.make_random_password())
+                user.is_active = is_active
+                user.save()
+                
+                Technician.objects.create(
+                    user=user,
+                    name=name,
+                    phone_number=phone_number,
+                    factory=factory
+                )
+                messages.success(request, f"Technician '{name}' added successfully.")
+                return redirect('dashboard_technicians')
+                
+    context = {
+        'form_errors': form_errors,
+        'form_data': form_data,
+    }
+    return render(request, 'ussd/dashboard_technician_form.html', context)
+
+
+@supervisor_required
+def dashboard_technician_edit(request, pk):
+    """
+    Edits an existing technician.
+    """
+    factory = _get_supervisor_factory(request.user)
+    qs = Technician.objects.select_related('user').all()
+    if factory:
+        qs = qs.filter(factory=factory)
+        
+    technician = get_object_or_404(qs, pk=pk)
+    form_errors = {}
+    
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        phone_number = request.POST.get('phone_number', '').strip()
+        is_active = request.POST.get('is_active') == 'on'
+        
+        if not name:
+            form_errors['name'] = ['Name is required.']
+        if not phone_number:
+            form_errors['phone_number'] = ['Phone number is required.']
+            
+        if not form_errors:
+            if Technician.objects.filter(phone_number=phone_number).exclude(pk=technician.pk).exists():
+                form_errors['phone_number'] = ['Another technician with this phone number already exists.']
+            else:
+                technician.name = name
+                technician.phone_number = phone_number
+                technician.save()
+                
+                technician.user.is_active = is_active
+                technician.user.save()
+                
+                messages.success(request, f"Technician '{name}' updated successfully.")
+                return redirect('dashboard_technicians')
+                
+    form_data = {
+        'name': technician.name,
+        'phone_number': technician.phone_number,
+        'is_active': technician.user.is_active,
+    }
+    context = {
+        'technician': technician,
+        'form_errors': form_errors,
+        'form_data': form_data,
+    }
+    return render(request, 'ussd/dashboard_technician_form.html', context)

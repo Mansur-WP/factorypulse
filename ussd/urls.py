@@ -24,6 +24,9 @@ urlpatterns = [
     path('dashboard/machines/', dashboard_views.dashboard_machines, name='dashboard_machines'),
     path('dashboard/machines/add/', dashboard_views.dashboard_machine_add, name='dashboard_machine_add'),
     path('dashboard/machines/<int:pk>/edit/', dashboard_views.dashboard_machine_edit, name='dashboard_machine_edit'),
+    path('dashboard/technicians/', dashboard_views.dashboard_technicians, name='dashboard_technicians'),
+    path('dashboard/technicians/add/', dashboard_views.dashboard_technician_add, name='dashboard_technician_add'),
+    path('dashboard/technicians/<int:pk>/edit/', dashboard_views.dashboard_technician_edit, name='dashboard_technician_edit'),
 ]
 
 
