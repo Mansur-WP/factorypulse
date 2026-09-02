@@ -1,411 +1,681 @@
-# FactoryPulse 🏭
+Absolutely. Here is the **final, clean README** you can copy and paste directly into `README.md`.
 
-**"Smarter Fault Reporting. Faster Maintenance."**
 
-FactoryPulse is a lightweight manufacturing fault-reporting and maintenance coordination platform designed to bridge the gap between factory workers, supervisors, and maintenance technicians.
+# 🏭 FactoryPulse
 
----
+### Smarter Fault Reporting. Faster Maintenance.
 
-## 1. OVERVIEW
+FactoryPulse is a lightweight manufacturing maintenance coordination platform that connects **factory workers, supervisors, and technicians** through **USSD, SMS, and a real-time web dashboard**.
 
-FactoryPulse solves a critical communication gap in manufacturing environments. It is a lightweight maintenance coordination platform designed around three key personas:
-
-1. **Worker:** Reports machine faults instantly from the factory floor using USSD—without requiring a smartphone or mobile internet.
-2. **Supervisor:** Manages all reported faults, monitors factory downtime, and coordinates maintenance through a secure web dashboard.
-3. **Technician:** Receives maintenance assignments via SMS and interacts with the fault lifecycle directly through text messages.
-
-By prioritizing offline-first communication channels (USSD and SMS), FactoryPulse ensures that production delays are minimized and maintenance teams are deployed faster.
+It is designed for factory environments where workers may not have smartphones or reliable mobile internet access.
 
 ---
 
-## 2. PROBLEM STATEMENT
+## 🚀 Live Demo
 
-In many manufacturing and industrial environments:
-- Machine faults need to be reported immediately to minimize downtime.
-- Workers often do not have smartphones or cannot use them safely on the factory floor.
-- Mobile internet availability inside factories can be a major constraint.
-- Informal or paper-based fault reporting causes delays, miscommunication, or lost information.
-- Supervisors lack real-time visibility into active faults and machine health.
-- Technicians need clear, trackable assignments.
-- Resolving machine downtime requires coordinated, visible tracking.
+**Live Application:**  
+https://factorypulse-m9ov.onrender.com
 
----
+**GitHub Repository:**  
+https://github.com/Mansur-WP/factorypulse.git
 
-## 3. SOLUTION
-
-FactoryPulse addresses these challenges by replacing informal reporting with a structured, communication-first workflow powered by Africa's Talking.
-
-**The Complete Workflow:**
-1. A worker reports a fault using a USSD code.
-2. FactoryPulse creates a centralized fault report with a unique ID.
-3. The supervisor sees the fault appear in the real-time dashboard.
-4. The supervisor reviews the severity and assigns a technician.
-5. The technician receives an automated SMS assignment.
-6. The technician accepts the assignment via SMS.
-7. The technician starts work via SMS.
-8. The technician resolves the fault via SMS.
-9. The supervisor tracks the entire lifecycle on the dashboard, measuring downtime and performance.
-
-**Fault Lifecycle:**
-`OPEN` → `ASSIGNED` → `ACCEPTED` → `IN_PROGRESS` → `RESOLVED`
+**Docker Image:**  
+`mpycraft/factorypulse:latest`
 
 ---
 
-## 4. KEY FEATURES
+## 🎯 The Problem
 
-- **USSD Fault Reporting:** Smartphone-free incident reporting.
-- **Dynamic Menus:** Database-driven machine, problem, and severity selection.
-- **Unique Fault IDs:** Traceable incident tracking.
-- **Supervisor Dashboard:** Secure, centralized operational overview.
-- **Fault Management:** Lifecycle tracking and assignment capabilities.
-- **Technician Assignment:** Direct dispatching to registered maintenance staff.
-- **Technician Management:** Add, edit, activate, and deactivate technicians.
-- **Technician Performance Metrics:** View assigned, in-progress, and successfully resolved faults natively derived from database records.
-- **SMS Technician Notifications:** Automated dispatch alerts.
-- **Technician SMS Workflow:** Two-way SMS commands (`ACCEPT`, `START`, `RESOLVE`).
-- **Machine Management:** Operational status and health tracking.
-- **Search & Filtering:** Quickly locate faults by machine, severity, status, or technician.
-- **Downtime Visibility:** Aggregated downtime analytics and resolution times.
-- **Factory-Scoped Authorization:** Multi-tenant access controls for supervisors.
-- **Role-Based Access Control:** Strict staff and superuser boundaries.
-- **PostgreSQL Persistence:** Robust relational data storage.
-- **Docker Deployment:** Fully containerized production environment.
+Machine downtime can become expensive when faults are reported slowly or maintenance teams lack visibility.
+
+In many factory environments:
+
+- Workers may not have smartphones.
+- Internet connectivity may be unreliable.
+- Machine faults can be reported informally.
+- Supervisors may lack a centralized view of faults.
+- Technicians may not receive assignments quickly.
+- Maintenance progress can be difficult to track.
+
+FactoryPulse addresses these challenges with a communication-first maintenance workflow.
 
 ---
 
-## 5. USER WORKFLOW
+## 💡 Our Solution
+
+FactoryPulse provides a simple workflow for reporting, assigning, and resolving machine faults.
+
+A worker reports a machine problem through **USSD**, without requiring a smartphone or mobile internet.
+
+The supervisor receives the fault through the FactoryPulse dashboard, reviews its severity, and assigns a technician.
+
+The technician receives an **SMS notification** and can manage the assigned fault through the technician workflow.
+
+The supervisor can then monitor the fault from report to resolution.
+
+---
+
+## 🔄 How It Works
 
 ```text
-  WORKER
+👷 WORKER
     │
-    │ (Dials USSD)
+    │ USSD
     ▼
-   USSD
+📡 FACTORYPULSE
     │
-    │ (Webhook Payload)
     ▼
-FACTORYPULSE
+👨‍💼 SUPERVISOR
     │
-    │ (Stores Fault)
+    │ Assign Technician
     ▼
-SUPERVISOR
+📱 SMS
     │
-    │ (Assigns Technician via Dashboard)
     ▼
-   SMS
+🔧 TECHNICIAN
     │
-    │ (Dispatch & Commands)
+    │ Accept → Start → Resolve
     ▼
-TECHNICIAN
-    │
-    │ (Resolves via SMS)
-    ▼
-RESOLUTION
-    │
-    │ (Status Updated)
-    ▼
-DASHBOARD
+✅ RESOLVED
+````
+
+### Fault Lifecycle
+
+```text
+OPEN
+  ↓
+ASSIGNED
+  ↓
+ACCEPTED
+  ↓
+IN_PROGRESS
+  ↓
+RESOLVED
+```
+
+Every fault receives a unique fault ID and moves through a defined maintenance lifecycle.
+
+---
+
+## 👥 User Roles
+
+### 👷 Worker
+
+Workers report machine faults through USSD.
+
+They can:
+
+* Select a machine
+* Select a problem
+* Select severity
+* Confirm the report
+* Receive a unique fault ID
+
+No smartphone or mobile internet is required for the reporting workflow.
+
+### 👨‍💼 Supervisor
+
+Supervisors use the web dashboard to:
+
+* View reported faults
+* Review fault severity
+* Assign technicians
+* Manage machines
+* Manage technicians
+* Activate or deactivate technicians
+* Monitor maintenance activity
+* View technician performance
+* Track fault status and downtime
+
+### 🔧 Technician
+
+Technicians receive assignments through SMS and can manage their assigned faults through the supported workflow:
+
+```text
+ACCEPT <fault_id>
+START <fault_id>
+RESOLVE <fault_id>
+```
+
+Technicians can only act on faults they are authorized to handle.
+
+---
+
+## ✨ Key Features
+
+### 📱 USSD Fault Reporting
+
+Workers can report machine problems through USSD without needing a smartphone or mobile internet.
+
+### 📊 Supervisor Dashboard
+
+A centralized dashboard provides visibility into:
+
+* Fault reports
+* Severity
+* Machine status
+* Technician assignments
+* Fault lifecycle
+* Downtime
+* Maintenance activity
+
+### 🔧 Technician Management
+
+Supervisors can:
+
+* Add technicians
+* Edit technician information
+* Activate/deactivate technicians
+* View technician performance
+
+### 📈 Technician Performance
+
+Performance information is calculated from actual fault records.
+
+The dashboard can show metrics such as:
+
+* Assigned faults
+* Resolved faults
+* In-progress faults
+* Other supported operational metrics
+
+Resolved faults provide a clear view of how many reported maintenance issues a technician has successfully resolved.
+
+### 📨 SMS Notifications
+
+Technicians receive maintenance assignment notifications through SMS.
+
+### 🔐 Role-Based Access
+
+Supervisor and technician actions are protected by authorization and factory-level access controls.
+
+### ⏱️ Downtime Visibility
+
+FactoryPulse tracks fault downtime to provide operational visibility into machine issues.
+
+### 🗄️ PostgreSQL Persistence
+
+Production data is stored using PostgreSQL.
+
+### 🐳 Dockerized Deployment
+
+FactoryPulse is packaged as a Docker image for deployment.
+
+---
+
+# 📡 Africa's Talking Integration
+
+Africa's Talking is a core part of the FactoryPulse communication workflow.
+
+## USSD
+
+Factory workers use the Africa's Talking USSD channel to report machine faults.
+
+The USSD interaction allows workers to provide:
+
+* Machine
+* Problem
+* Severity
+* Confirmation
+
+This makes the reporting workflow accessible even when a worker does not have a smartphone or mobile internet.
+
+## SMS
+
+Africa's Talking SMS is used to notify technicians when a fault has been assigned to them.
+
+Technicians can then interact with their assigned faults through the supported SMS workflow.
+
+## Webhooks
+
+FactoryPulse exposes webhook endpoints for communication with Africa's Talking.
+
+### USSD
+
+```text
+POST /ussd/
+```
+
+### SMS Delivery
+
+```text
+POST /sms/delivery/
+```
+
+### Incoming SMS
+
+```text
+POST /sms/incoming/
+```
+
+The incoming SMS endpoint supports technician commands such as:
+
+```text
+ACCEPT <fault_id>
+START <fault_id>
+RESOLVE <fault_id>
+```
+
+> API keys, webhook secrets, passwords, and other sensitive credentials are never stored in this README.
+
+---
+
+# 🏗️ System Architecture
+
+```text
+                    ┌──────────────────────┐
+                    │   Africa's Talking   │
+                    │                      │
+                    │      USSD + SMS      │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   FactoryPulse       │
+                    │   Django Backend     │
+                    └──────────┬───────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+              ▼                ▼                ▼
+       ┌─────────────┐  ┌──────────────┐  ┌──────────────┐
+       │ PostgreSQL  │  │  Supervisor  │  │   Technician │
+       │  Database   │  │  Dashboard   │  │ SMS Workflow │
+       └─────────────┘  └──────────────┘  └──────────────┘
+```
+
+### Architecture Flow
+
+```text
+Worker
+  │
+  │ USSD
+  ▼
+Africa's Talking
+  │
+  ▼
+Django Backend
+  │
+  ├── PostgreSQL
+  │
+  ├── Supervisor Dashboard
+  │
+  └── SMS → Technician
 ```
 
 ---
 
-## 6. AFRICA'S TALKING INTEGRATION
+# 🛠️ Technology Stack
 
-FactoryPulse relies heavily on Africa's Talking (AT) APIs to bridge the gap between offline factory floors and the cloud application.
-
-**USSD Integration:**
-Workers use the Africa's Talking USSD channel to report machine faults. The dynamic menus allow them to select machines, problems, and severities instantly.
-
-**SMS Integration:**
-Technicians receive fault assignment notifications through the AT SMS gateway. Furthermore, they interact with the maintenance workflow by replying with SMS commands.
-
-**Webhook Endpoints:**
-FactoryPulse exposes secure webhook endpoints to handle AT communication:
-- **USSD Callback:** `POST /ussd/`
-- **SMS Delivery Status:** `POST /sms/delivery/`
-- **Incoming SMS Commands:** `POST /sms/incoming/`
-
----
-
-## 7. ARCHITECTURE
-
-```mermaid
-graph TD
-    A[Worker Phone] -->|USSD| AT[Africa's Talking]
-    B[Technician Phone] <-->|SMS| AT
-    
-    AT <-->|Webhooks & API| Backend[FactoryPulse Django Backend]
-    
-    Backend <--> DB[(PostgreSQL)]
-    Backend <--> Dashboard[Supervisor Dashboard UI]
-```
-
-- **Africa's Talking:** Handles all telco network routing (USSD sessions and SMS dispatch).
-- **FactoryPulse Django Backend:** Manages business logic, state transitions, security, and rendering the dashboard.
-- **PostgreSQL:** Persists all users, machines, fault reports, technician profiles, and history logs.
-- **Supervisor Dashboard:** Secure web interface for factory management.
-- **Technician SMS Workflow:** Headless two-way communication channel for maintenance staff.
+| Technology          | Purpose                          |
+| ------------------- | -------------------------------- |
+| Python              | Application programming language |
+| Django              | Backend web framework            |
+| PostgreSQL          | Production database              |
+| HTML/CSS/JavaScript | Web interface                    |
+| Africa's Talking    | USSD and SMS communication       |
+| Gunicorn            | Production WSGI server           |
+| WhiteNoise          | Static file serving              |
+| Docker              | Application containerization     |
+| Docker Hub          | Container image registry         |
+| Render              | Production hosting               |
 
 ---
 
-## 8. TECHNOLOGY STACK
+# 🗄️ Database
 
-- **Language:** Python 3
-- **Framework:** Django 5
-- **Database:** PostgreSQL (Production) / SQLite (Local MVP)
-- **Frontend:** HTML5, Vanilla CSS, JavaScript
-- **Integrations:** Africa's Talking APIs (USSD & SMS)
-- **Containerization:** Docker & Docker Compose
-- **Server:** Gunicorn
-- **Static Files:** WhiteNoise
-- **Deployment & Hosting:** Render, Docker Hub
+FactoryPulse uses PostgreSQL for persistent production data.
 
----
+The application models the main operational entities involved in the maintenance workflow, including:
 
-## 9. DATABASE
+* Users
+* Factories
+* Supervisors
+* Technicians
+* Machines
+* Fault Reports
+* Fault history/status information
 
-The platform is backed by a robust PostgreSQL relational database consisting of:
-
-- **Users:** Django's built-in authentication model.
-- **Supervisors:** Profiles linking Users to specific Factories.
-- **Technicians:** Maintenance staff records linked to Users and Factories.
-- **Factories:** Organizational units for multi-tenant scoping.
-- **Machines:** The physical assets being monitored.
-- **Fault Reports:** The core incident records tracking the problem, severity, and assigned technician.
-- **Fault Status History:** An append-only log tracking every state transition (who, when, what) for accurate downtime calculation.
-
-*Note: Technician performance metrics (like "Resolved Faults") are strictly derived through Django ORM aggregations of the `FaultReport` and `FaultStatusHistory` tables, ensuring data integrity without redundant counters.*
+Technician performance metrics are derived from existing fault records rather than maintaining redundant counters wherever possible.
 
 ---
 
-## 10. SECURITY
+# 🔐 Security
 
-FactoryPulse implements essential web security measures:
+FactoryPulse includes several production security measures, including:
 
-- **Production Configuration:** `DEBUG` is strictly disabled in production.
-- **Secrets Management:** `SECRET_KEY` and API credentials are provided via environment variables.
-- **Host Validation:** `ALLOWED_HOSTS` enforced.
-- **Protection Middleware:** CSRF protection, secure cookies, HSTS, X-Frame-Options, and Referrer policy configured.
-- **Authorization:** Factory-scoped supervisor access (supervisors can only see their factory's data).
-- **Technician Safeguards:** Technicians can only update faults explicitly assigned to them.
-- **State Validation:** Strict fault lifecycle transitions enforced at the database/service layer.
-- **Webhook Security:** Optional HMAC secret validation for incoming Africa's Talking SMS webhooks.
-- **Data Privacy:** Phone numbers are masked in application logs.
+* Production `DEBUG` disabled
+* Production secret key requirements
+* `ALLOWED_HOSTS` validation
+* CSRF protection
+* Secure cookies
+* HSTS configuration
+* `X-Frame-Options` protection
+* Referrer policy
+* Factory-scoped supervisor access
+* Technician authorization
+* Assigned-fault authorization
+* Fault state-transition validation
+* Machine input validation
+* Optional incoming SMS webhook authentication
+* Masked phone numbers in application logs
 
----
-
-## 11. TECHNICIAN MANAGEMENT
-
-The Supervisor Dashboard includes a comprehensive Technician Management module. Supervisors can:
-
-- **View Technicians:** See all maintenance staff assigned to their factory.
-- **Add Technicians:** Provision new technicians (which automatically provisions underlying authentication safely).
-- **Edit Technicians:** Update contact details.
-- **Activate/Deactivate:** Suspend technicians who are on leave or no longer employed.
-- **View Performance Metrics:** Track workload and efficiency natively from the database.
-
-**Key Performance Indicators:**
-- **Resolved Faults:** The primary metric showing exactly how many faults the technician successfully resolved.
-- **Assigned Faults:** Total historical assignments.
-- **In-Progress Faults:** Current active workload.
+Supervisor access is restricted to authorized users and their associated factory.
 
 ---
 
-## 12. DEPLOYMENT
+# 🧪 Testing
 
-FactoryPulse is built for modern cloud deployment.
+FactoryPulse currently has:
 
-- **Docker Image:** `mpycraft/factorypulse:latest`
-- **Hosting Platform:** Render
-- **Database:** Render PostgreSQL
-- **Live URL:** [https://factorypulse-m9ov.onrender.com](https://factorypulse-m9ov.onrender.com)
+**159 tests passing.**
 
-The deployment architecture utilizes a Dockerized Gunicorn WSGI server serving the Django application, with static assets handled seamlessly by WhiteNoise.
+The test suite covers major application workflows and security-related behavior implemented in the project.
 
----
-
-## 13. DOCKER
-
-To build and push the Docker image yourself:
+Run the test suite locally with:
 
 ```bash
-# Build the image
-docker build -t mpycraft/factorypulse:latest .
+python manage.py test
+```
 
-# Push to Docker Hub
+---
+
+# 💻 Local Development
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/Mansur-WP/factorypulse.git
+cd factorypulse
+```
+
+## 2. Create a virtual environment
+
+```bash
+python -m venv .venv
+```
+
+Activate it on Windows:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+## 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+## 4. Check the Django project
+
+```bash
+python manage.py check
+```
+
+## 5. Run tests
+
+```bash
+python manage.py test
+```
+
+## 6. Start the development server
+
+```bash
+python manage.py runserver
+```
+
+The application will normally be available at:
+
+```text
+http://127.0.0.1:8000/
+```
+
+---
+
+# 🐳 Docker
+
+FactoryPulse is distributed as a Docker image.
+
+### Build
+
+```bash
+docker build -t mpycraft/factorypulse:latest .
+```
+
+### Push
+
+```bash
 docker push mpycraft/factorypulse:latest
 ```
 
-**Docker image:** `mpycraft/factorypulse:latest`
+### Docker Image
+
+```text
+mpycraft/factorypulse:latest
+```
 
 ---
 
-## 14. ENVIRONMENT VARIABLES
+# ⚙️ Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DEBUG` | Enables Django debug mode (must be False in production) |
-| `SECRET_KEY` | Cryptographic key for Django sessions and security |
-| `ALLOWED_HOSTS` | Comma-separated list of permitted domain names |
-| `CSRF_TRUSTED_ORIGINS` | Permitted origins for CSRF validation |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `AFRICASTALKING_USERNAME` | Africa's Talking application username |
-| `AFRICASTALKING_API_KEY` | Africa's Talking secret API key |
-| `AFRICASTALKING_SENDER_ID` | Optional alphanumeric sender ID for SMS |
-| `AFRICASTALKING_WEBHOOK_SECRET` | Optional HMAC token for incoming SMS webhook validation |
-| `PORT` | Web server port (used by Docker/Render) |
+FactoryPulse uses environment variables for configuration and sensitive credentials.
 
----
+| Variable                      | Description                                             |
+| ----------------------------- | ------------------------------------------------------- |
+| `DEBUG`                       | Controls Django debug mode                              |
+| `SECRET_KEY`                  | Django application secret                               |
+| `ALLOWED_HOSTS`               | Allowed application hostnames                           |
+| `CSRF_TRUSTED_ORIGINS`        | Trusted origins for CSRF protection                     |
+| `DATABASE_URL`                | PostgreSQL database connection                          |
+| `AFRICASTALKING_USERNAME`     | Africa's Talking account username                       |
+| `AFRICASTALKING_API_KEY`      | Africa's Talking API authentication key                 |
+| `AFRICASTALKING_SENDER_ID`    | SMS sender configuration where applicable               |
+| `SMS_INCOMING_WEBHOOK_SECRET` | Optional authentication secret for incoming SMS webhook |
 
-## 15. LOCAL DEVELOPMENT
-
-To run the project locally for development:
-
-1. **Create and activate a virtual environment:**
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Verify configuration:**
-   ```bash
-   python manage.py check
-   ```
-
-4. **Run the test suite:**
-   ```bash
-   python manage.py test
-   ```
-
-5. **Start the development server:**
-   ```bash
-   python manage.py runserver
-   ```
+> Never commit actual environment variable values, API keys, passwords, or secrets to the repository.
 
 ---
 
-## 16. TESTING
+# ☁️ Production Deployment
 
-FactoryPulse maintains a robust testing culture. The project currently has **159 automated tests passing**.
+FactoryPulse is deployed using Docker and Render.
 
-The test suite thoroughly covers:
-- USSD dynamic menu generation and state machines.
-- SMS dispatch and incoming command parsing.
-- Dashboard authorization and factory-scoping rules.
-- Technician performance metric calculations.
-- Strict fault state transitions.
+### Production Components
 
----
+```text
+Docker Image
+     ↓
+Docker Hub
+     ↓
+Render Web Service
+     ↓
+Django + Gunicorn
+     ↓
+PostgreSQL
+```
 
-## 17. LIVE DEMO
+### Live Application
 
-- **Live Application:** [https://factorypulse-m9ov.onrender.com](https://factorypulse-m9ov.onrender.com)
-- **GitHub Repository:** [https://github.com/Mansur-WP/factorypulse.git](https://github.com/Mansur-WP/factorypulse.git)
-- **Docker Image:** `mpycraft/factorypulse:latest`
+[https://factorypulse-m9ov.onrender.com](https://factorypulse-m9ov.onrender.com)
 
-Demo video: To be added before final submission.
+### Container Image
 
----
-
-## 18. DEMO CREDENTIALS
-
-Demo credentials are provided through the official hackathon submission form and should not be committed to the repository.
-
----
-
-## 19. HACKATHON ALIGNMENT
-
-**Innovation:**
-FactoryPulse introduces a practical, communication-first maintenance workflow that prioritizes the realities of harsh factory environments over complex smartphone apps.
-
-**Manufacturing Relevance:**
-The entire application is laser-focused on the manufacturing domain: tracking machine faults, measuring downtime, coordinating maintenance, and empowering technicians.
-
-**Africa's Talking Integration:**
-USSD and SMS are not just add-ons; they are the central nervous system of the worker and technician workflows. 
-
-**Technical Implementation:**
-A robust, secure implementation utilizing Django, PostgreSQL, and Docker, complete with webhook security, role-based access control, and strict state machine validations.
-
-**Scalability:**
-Built on a relational database with multi-tenant capabilities (Factories) and containerized via Docker for horizontal scaling.
-
-**Usability:**
-Zero-training USSD interface for workers, a clean visual dashboard for supervisors, and simple text commands for technicians.
-
-**Real-World Impact:**
-Reduces communication gaps, accelerates fault reporting, clarifies maintenance assignments, and provides actionable visibility into production downtime.
+```text
+mpycraft/factorypulse:latest
+```
 
 ---
 
-## 20. SCALABILITY
+# 📸 Product
 
-**FUTURE Improvements for Scale:**
-- **Multiple Factories:** Expanding the existing multi-tenant architecture for enterprise group management.
-- **Queue/Background Processing:** Implementing Celery/Redis for asynchronous SMS dispatch at massive scale.
-- **Worker Registration/Identity:** Pinning USSD reports to verified worker profiles.
-- **Advanced Analytics:** Predictive insights based on historical machine failure rates.
-- **IoT Integration:** Automatically triggering fault reports from machine sensors.
+FactoryPulse provides a public product landing page and an authenticated supervisor dashboard.
 
----
+The landing page explains the product, workflow, manufacturing problem, and Africa's Talking integration.
 
-## 21. LIMITATIONS
-
-As an MVP, FactoryPulse has some intentional limitations:
-- Worker USSD reporting is not currently authenticated to a registered worker identity (anyone with the USSD code can report).
-- Technician SMS authentication relies on phone-number matching rather than advanced multi-factor methods.
-- Advanced predictive maintenance or direct IoT integrations are outside the scope of this communication-focused MVP.
+The supervisor dashboard provides operational visibility into faults, machines, technicians, assignments, and maintenance activity.
 
 ---
 
-## 22. FUTURE IMPROVEMENTS
+# 🎯 Hackathon Alignment
 
-- Granular notification delivery tracking and read receipts.
-- Inventory integration to track spare parts used during resolution.
-- Scheduled preventive maintenance USSD workflows.
+FactoryPulse was developed for the **Africa's Talking Manufacturing Solutions Hackathon**.
+
+## Innovation
+
+FactoryPulse combines USSD, SMS, and a centralized maintenance workflow to address practical factory communication challenges.
+
+## Manufacturing Relevance
+
+The solution focuses on:
+
+* Machine faults
+* Maintenance coordination
+* Technician assignments
+* Downtime visibility
+* Fault resolution
+
+## Africa's Talking Integration
+
+Africa's Talking USSD and SMS are central to the worker and technician workflows rather than being added as secondary features.
+
+## Technical Implementation
+
+The solution uses:
+
+* Django
+* PostgreSQL
+* Africa's Talking APIs
+* Docker
+* Production deployment
+* Role-based authorization
+* Webhooks
+
+## Usability
+
+Different users interact through channels suited to their role:
+
+```text
+Worker       → USSD
+Supervisor   → Web Dashboard
+Technician   → SMS
+```
+
+## Real-World Impact
+
+FactoryPulse aims to reduce communication gaps between factory workers, supervisors, and technicians and provide clearer visibility into maintenance operations.
 
 ---
 
-## 23. PROJECT STATUS
+# 📈 Scalability
 
-FactoryPulse MVP is implemented, Dockerized, and deployed.
+The current implementation is an MVP designed to provide the core maintenance workflow.
 
-- **Live:** [https://factorypulse-m9ov.onrender.com](https://factorypulse-m9ov.onrender.com)
-- **Docker:** `mpycraft/factorypulse:latest`
-- **GitHub:** [https://github.com/Mansur-WP/factorypulse.git](https://github.com/Mansur-WP/factorypulse.git)
+Future scaling opportunities include:
+
+* Supporting additional factories
+* Larger technician teams
+* Background task processing
+* Improved notification delivery tracking
+* Worker registration and identity management
+* Advanced maintenance analytics
+* IoT machine integrations
+* Predictive maintenance
+* Inventory management
+* Mobile applications
+
+These are future improvements and are not presented as existing MVP features.
 
 ---
 
-## 24. LICENSE
+# ⚠️ Current MVP Limitations
 
-This project was developed as a manufacturing technology hackathon project.
+The current MVP has several intentional limitations.
+
+### Worker Identity
+
+USSD fault reporting is not currently tied to a registered worker account.
+
+### Technician Identification
+
+Technician SMS workflow relies on phone-number matching.
+
+### Advanced Predictive Maintenance
+
+IoT monitoring, machine-learning prediction, and predictive maintenance are outside the current MVP scope.
+
+These limitations provide opportunities for future versions while keeping the current MVP focused on the core reporting and maintenance workflow.
 
 ---
 
-## 25. HACKATHON SUBMISSION CHECKLIST
+# 🔮 Future Improvements
 
-- [x] Team information
-- [x] Short description
-- [x] Full solution description
-- [x] Problem statement
-- [x] Key features
-- [x] User workflow
-- [x] Africa's Talking products
-- [x] Africa's Talking integration explanation
-- [x] Technologies used
-- [x] Git repository
-- [x] Live application
-- [ ] Demo/walkthrough video
-- [ ] Demo credentials supplied through submission form
-- [x] Docker image
-- [x] Environment variable documentation
-- [x] Solution documentation prepared
-- [x] Team declaration
+Potential future versions of FactoryPulse could include:
+
+* Registered worker identities
+* More advanced technician analytics
+* Maintenance scheduling
+* Automated escalation
+* Delivery-report monitoring
+* IoT sensor integration
+* Predictive maintenance
+* Inventory and spare-parts management
+* Mobile applications
+* Multi-factory management
+* Advanced reporting and analytics
+
+---
+
+# 🌐 Project Links
+
+| Resource         | Link                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| Live Application | [https://factorypulse-m9ov.onrender.com](https://factorypulse-m9ov.onrender.com)               |
+| GitHub           | [https://github.com/Mansur-WP/factorypulse.git](https://github.com/Mansur-WP/factorypulse.git) |
+| Docker Image     | `mpycraft/factorypulse:latest`                                                                 |
+
+---
+
+# 📄 Documentation
+
+The complete hackathon solution documentation is provided separately as the official submission document.
+
+It contains the detailed architecture, database design, deployment information, security, scalability, impact, demonstration information, and other required submission details.
+
+---
+
+# 🏁 Project Status
+
+**FactoryPulse MVP: Implemented and Deployed**
+
+The current MVP includes:
+
+```text
+✅ Public Landing Page
+✅ USSD Fault Reporting
+✅ Supervisor Dashboard
+✅ Technician Management
+✅ Technician Performance Metrics
+✅ Technician Assignment
+✅ SMS Notifications
+✅ Technician SMS Workflow
+✅ Fault Lifecycle Tracking
+✅ Machine Management
+✅ Downtime Visibility
+✅ Factory-Scoped Authorization
+✅ PostgreSQL Persistence
+✅ Docker Deployment
+✅ Production Hosting
+```
+
+---
+
+## 🏭 FactoryPulse
+
+### Smarter Fault Reporting. Faster Maintenance.
+
+Built for the **Africa's Talking Manufacturing Solutions Hackathon · Kano, Nigeria**
+
+```
+
+
